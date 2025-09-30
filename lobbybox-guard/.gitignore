@@ -1,0 +1,38 @@
+# React Native
+node_modules/
+android/
+ios/
+build/
+.expo/
+web-build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Bundler
+.expo-shared/
+metro-cache/
+
+# Fastlane
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+
+# macOS
+.DS_Store
+
+# Xcode
+*.xcworkspace
+*.xcuserstate
+xcuserdata/
+
+# Android Studio
+*.iml
+.gradle/
+local.properties
+
+# Typescript
+*.tsbuildinfo
