@@ -10,8 +10,9 @@ import {ProgressBar} from '@/components/ProgressBar';
 import {useThemeContext} from '@/theme';
 import {AppTabParamList} from '@/navigation/AppNavigator';
 import {createParcel, requestParcelUpload, uploadParcelImage} from '@/api/parcels';
-import {getDefaultPropertyId} from '@/config/property';
 import {showToast} from '@/utils/toast';
+import {useAuth} from '@/hooks/useAuth';
+import {useParcelQueue} from '@/hooks/useParcelQueue';
 
 const MAX_PHOTO_EDGE = 1400;
 
@@ -32,6 +33,8 @@ type UploadState = {
 
 export const CaptureScreen: React.FC = () => {
   const {theme} = useThemeContext();
+  const {property, refreshProfile} = useAuth();
+  const {isOnline, enqueue} = useParcelQueue();
   const device = useCameraDevice('back');
   const camera = useRef<Camera | null>(null);
   const {hasPermission, requestPermission, status} = useCameraPermission();
@@ -43,6 +46,9 @@ export const CaptureScreen: React.FC = () => {
   const [remarks, setRemarks] = useState('');
   const [uploadState, setUploadState] = useState<UploadState>({progress: 0, message: ''});
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState('Parcel saved');
+
+  const propertyId = property?.propertyId;
 
   useEffect(() => {
     if (!hasPermission && status !== 'denied') {
@@ -82,6 +88,7 @@ export const CaptureScreen: React.FC = () => {
     setUploadState({progress: 0, message: ''});
     setError(null);
     setStep('capture');
+    setSuccessMessage('Parcel saved');
   }, []);
 
   const optimizePhoto = useCallback(
@@ -106,7 +113,7 @@ export const CaptureScreen: React.FC = () => {
   );
 
   const uploadPhoto = useCallback(
-    async (photo: PhotoFile, notes: string) => {
+    async (photo: PhotoFile, notes: string, propertyId: string) => {
       setStep('uploading');
       setUploadState({progress: 0, message: 'Preparing photo'});
 
@@ -120,7 +127,6 @@ export const CaptureScreen: React.FC = () => {
       });
 
       setUploadState({progress: 0.95, message: 'Saving parcel'});
-      const propertyId = getDefaultPropertyId();
       await createParcel({
         propertyId,
         photoUrl: blobUrl,
@@ -140,14 +146,37 @@ export const CaptureScreen: React.FC = () => {
       return;
     }
 
+    if (!propertyId) {
+      setError('You are not assigned to a property.');
+      return;
+    }
+
     try {
       setError(null);
-      await uploadPhoto(capturedPhoto, remarks);
+      const trimmedRemarks = remarks.trim();
+
+      if (!isOnline) {
+        const optimized = await optimizePhoto(capturedPhoto);
+        await enqueue({
+          localUri: ensureFileUri(optimized.path),
+          propertyId,
+          remarks: trimmedRemarks ? trimmedRemarks : undefined,
+        });
+        showToast('Parcel queued for upload');
+        setCapturedPhoto(null);
+        setRemarks('');
+        setSuccessMessage('Parcel queued for sync');
+        setStep('success');
+        return;
+      }
+
+      await uploadPhoto(capturedPhoto, trimmedRemarks, propertyId);
+      setSuccessMessage('Parcel saved');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save parcel. Please try again.');
       setStep('confirm');
     }
-  }, [capturedPhoto, remarks, uploadPhoto]);
+  }, [capturedPhoto, enqueue, isOnline, optimizePhoto, propertyId, remarks, uploadPhoto]);
 
   const handleViewToday = useCallback(() => {
     navigation.navigate('Today');
@@ -176,6 +205,18 @@ export const CaptureScreen: React.FC = () => {
   }, [hasPermission, handleOpenSettings, requestPermission, status, theme.colors.muted, theme.colors.text]);
 
   const canShowCamera = hasPermission && device && step === 'capture';
+
+  if (!propertyId) {
+    return (
+      <ScreenContainer style={styles.container}>
+        <View style={styles.centered}>
+          <Text style={[styles.title, {color: theme.colors.text, marginBottom: 8}]}>Property assignment required</Text>
+          <Text style={[styles.subtitle, {color: theme.colors.muted, textAlign: 'center', marginBottom: 24}]}>We couldn't find an assigned property for your account. Please contact your administrator or try refreshing your assignment.</Text>
+          <Button title="Retry assignment" onPress={() => refreshProfile()} />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   const cameraContent = canShowCamera ? (
     <View style={styles.cameraWrapper}>
@@ -221,6 +262,9 @@ export const CaptureScreen: React.FC = () => {
             style={[styles.input, {borderColor: theme.colors.border, color: theme.colors.text}]}
           />
         </View>
+        {!isOnline ? (
+          <Text style={[styles.offlineNotice, {color: theme.colors.muted}]}>You're offline. We'll queue this parcel and sync it once you're connected.</Text>
+        ) : null}
         {error ? <Text style={[styles.errorText, {color: theme.colors.notification}]}>{error}</Text> : null}
         <View style={styles.actionsRow}>
           <Button title="Retake" variant="secondary" onPress={resetCapture} style={[styles.actionButton, styles.actionSpacing]} />
@@ -240,10 +284,14 @@ export const CaptureScreen: React.FC = () => {
     </View>
   );
 
+  const successSubtitle = successMessage.toLowerCase().includes('queue')
+    ? 'We will sync it automatically once you are back online.'
+    : 'What would you like to do next?';
+
   const successContent = (
     <View style={styles.successContainer}>
-      <Text style={[styles.title, {color: theme.colors.text}]}>Parcel saved</Text>
-      <Text style={[styles.subtitle, {color: theme.colors.muted, textAlign: 'center'}]}>What would you like to do next?</Text>
+      <Text style={[styles.title, {color: theme.colors.text}]}>{successMessage}</Text>
+      <Text style={[styles.subtitle, {color: theme.colors.muted, textAlign: 'center'}]}>{successSubtitle}</Text>
       <View style={styles.actionsColumn}>
         <Button title="Create another" onPress={resetCapture} style={styles.fullWidthButton} />
         <View style={styles.actionsColumnSpacer} />
@@ -338,6 +386,11 @@ const styles = StyleSheet.create({
   errorText: {
     marginBottom: 16,
     fontSize: 14,
+  },
+  offlineNotice: {
+    marginBottom: 12,
+    fontSize: 14,
+    textAlign: 'center',
   },
   uploadContainer: {
     width: '100%',

@@ -13,9 +13,10 @@ import dayjs from 'dayjs';
 import {useQuery} from '@tanstack/react-query';
 import {ScreenContainer} from '@/components/ScreenContainer';
 import {useThemeContext} from '@/theme';
-import {fetchParcels} from '@/api/parcels';
+import {fetchParcelsForDate} from '@/api/parcels';
 import {Parcel} from '@/api/types';
 import {showToast} from '@/utils/toast';
+import {useAuth} from '@/hooks/useAuth';
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 
@@ -60,7 +61,9 @@ const ParcelItem: React.FC<{parcel: Parcel}> = ({parcel}) => {
 
 export const TodayScreen: React.FC = () => {
   const {theme} = useThemeContext();
+  const {property, refreshProfile} = useAuth();
   const today = useMemo(() => dayjs().format(DATE_FORMAT), []);
+  const propertyId = property?.propertyId;
 
   const {
     data: parcels,
@@ -69,8 +72,9 @@ export const TodayScreen: React.FC = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['parcels', today],
-    queryFn: () => fetchParcels(today),
+    queryKey: ['parcels', today, propertyId],
+    queryFn: () => fetchParcelsForDate(today, propertyId ?? undefined),
+    enabled: Boolean(propertyId),
   });
 
   const isRefreshing = isFetching && !isLoading;
@@ -87,9 +91,27 @@ export const TodayScreen: React.FC = () => {
 
   const renderItem = useCallback(({item}: {item: Parcel}) => <ParcelItem parcel={item} />, []);
 
+  if (!propertyId) {
+    return (
+      <ScreenContainer>
+        <View style={styles.messageContainer}>
+          <Text style={[styles.heading, {color: theme.colors.text}]}>Today · {dayjs(today).format('MMM D, YYYY')}</Text>
+          <Text style={[styles.messageTitle, {color: theme.colors.text}]}>Property assignment required</Text>
+          <Text style={[styles.messageBody, {color: theme.colors.muted}]}>We couldn't find an assigned property for your account. Please contact your administrator or try refreshing your assignment.</Text>
+          <TouchableOpacity onPress={() => refreshProfile()}>
+            <Text style={{color: theme.colors.primary}}>Tap to retry assignment</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer>
-      <Text style={[styles.heading, {color: theme.colors.text}]}>Today · {dayjs(today).format('MMM D, YYYY')}</Text>
+      <Text style={[styles.heading, {color: theme.colors.text}]}>
+        Today · {dayjs(today).format('MMM D, YYYY')}
+        {property?.propertyName ? ` · ${property.propertyName}` : ''}
+      </Text>
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -171,5 +193,24 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     marginBottom: 8,
+  },
+  messageContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 32,
+  },
+  messageTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  messageBody: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
   },
 });

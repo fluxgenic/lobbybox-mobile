@@ -1,7 +1,7 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useState} from 'react';
 import api, {ApiError} from '@/api/client';
 import {authEvents} from '@/api/authEvents';
-import {AuthResponse, Role, User} from '@/api/types';
+import {AuthResponse, GuardProfile, PropertyAssignment, Role, User} from '@/api/types';
 import {tokenStorage} from '@/storage/tokenStorage';
 import {useQueryClient} from '@tanstack/react-query';
 
@@ -10,11 +10,13 @@ export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated
 type AuthContextValue = {
   status: AuthStatus;
   user: User | null;
+  property: PropertyAssignment | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   hasRole: (...roles: Role[]) => boolean;
   error: string | null;
   clearError: () => void;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -30,16 +32,24 @@ const useAuthContext = (): AuthContextValue => {
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
   const [status, setStatus] = useState<AuthStatus>('idle');
   const [user, setUser] = useState<User | null>(null);
+  const [property, setProperty] = useState<PropertyAssignment | null>(null);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const logout = useCallback(async () => {
     await tokenStorage.clear();
     setUser(null);
+    setProperty(null);
     setStatus('unauthenticated');
     setError(null);
     queryClient.clear();
   }, [queryClient]);
+
+  const loadProfile = useCallback(async () => {
+    const {data} = await api.get<GuardProfile>('/me');
+    setUser(data);
+    setProperty(data.propertyAssignment ?? null);
+  }, []);
 
   const bootstrap = useCallback(async () => {
     setStatus('loading');
@@ -49,13 +59,12 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
         setStatus('unauthenticated');
         return;
       }
-      const {data} = await api.get<User>('/me');
-      setUser(data);
+      await loadProfile();
       setStatus('authenticated');
     } catch (err) {
       await logout();
     }
-  }, [logout]);
+  }, [loadProfile, logout]);
 
   useEffect(() => {
     bootstrap();
@@ -81,6 +90,10 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
         refreshToken: data.refreshToken,
       });
       setUser(data.user);
+      setProperty(data.user.propertyAssignment ?? null);
+      if (!data.user.propertyAssignment) {
+        await loadProfile();
+      }
       setStatus('authenticated');
     } catch (err) {
       const apiError = err as ApiError;
@@ -88,7 +101,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
       setError(message);
       setStatus('unauthenticated');
     }
-  }, []);
+  }, [loadProfile]);
 
   const hasRole = useCallback(
     (...roles: Role[]) => {
@@ -106,13 +119,15 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
     () => ({
       status,
       user,
+      property,
       login,
       logout,
       hasRole,
       error,
       clearError,
+      refreshProfile: loadProfile,
     }),
-    [status, user, login, logout, hasRole, error, clearError],
+    [status, user, property, login, logout, hasRole, error, clearError, loadProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

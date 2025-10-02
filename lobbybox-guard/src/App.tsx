@@ -5,6 +5,7 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {enableScreens} from 'react-native-screens';
 import {AppNavigator} from '@/navigation/AppNavigator';
 import {AuthProvider} from '@/context/AuthContext';
+import {ParcelQueueProvider} from '@/context/ParcelQueueContext';
 import {ThemeProvider} from '@/theme';
 
 enableScreens();
@@ -18,7 +19,9 @@ const App: React.FC = () => {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
-              <AppNavigator />
+              <ParcelQueueProvider>
+                <AppNavigator />
+              </ParcelQueueProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>
