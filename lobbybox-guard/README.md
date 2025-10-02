@@ -8,7 +8,7 @@ Foundational React Native (0.74) application targeting security guards. Built wi
 
 The native projects are intentionally excluded from this repository snapshot (see note below). Once you generate the iOS and Android folders, apply the following hardening items before archiving release builds:
 
-### iOS (`ios/lobbybox-guard/Info.plist`)
+### iOS (`ios/LobbyboxGuard/Info.plist`)
 
 ```xml
 <key>NSCameraUsageDescription</key>
@@ -44,8 +44,6 @@ Store capture payloads inside scoped storage (`context.getExternalFilesDir`) and
 
 ## Getting Started
 
-## Getting Started
-
 1. Install dependencies
 
 ```bash
@@ -65,7 +63,7 @@ npm run android
 npm run ios
 ```
 
-> **Note:** Native iOS/Android projects are not included in this repository snapshot. Generate them with `npx @react-native-community/cli init lobbybox-guard --template react-native-template-typescript` if you need native build scaffolding.
+> **Note:** Native iOS/Android projects are not included in this repository snapshot. Generate them with `npx @react-native-community/cli init LobbyboxGuard --template react-native-template-typescript` if you need native build scaffolding. The React Native CLI requires the project name to be alphanumeric, so avoid hyphens or other punctuation when choosing the identifier.
 
 ## Configuration
 
