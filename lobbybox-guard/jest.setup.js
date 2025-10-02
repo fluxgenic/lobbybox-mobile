@@ -7,3 +7,14 @@ jest.mock('@react-native-community/netinfo', () => ({
   addEventListener: jest.fn(),
   fetch: jest.fn(),
 }));
+jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+jest.mock('react-native-vision-camera', () => ({
+  Camera: jest.fn().mockImplementation(() => null),
+  CameraRuntimeError: class MockCameraRuntimeError extends Error {},
+  useCameraDevice: jest.fn(() => null),
+  useCameraPermission: jest.fn(() => ({
+    hasPermission: false,
+    requestPermission: jest.fn(),
+    status: 'not-determined',
+  })),
+}));
