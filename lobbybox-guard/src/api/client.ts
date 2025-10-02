@@ -84,6 +84,6 @@ api.interceptors.response.use(
   },
 );
 
-export type ApiError = AxiosError<{message?: string}>;
+export type ApiError = AxiosError<{message?: string; code?: string; requestId?: string}>;
 
 export default api;

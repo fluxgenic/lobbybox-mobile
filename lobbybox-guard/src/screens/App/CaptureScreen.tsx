@@ -13,10 +13,25 @@ import {createParcel, requestParcelUpload, uploadParcelImage} from '@/api/parcel
 import {showToast} from '@/utils/toast';
 import {useAuth} from '@/hooks/useAuth';
 import {useParcelQueue} from '@/hooks/useParcelQueue';
+import {ErrorNotice} from '@/components/ErrorNotice';
+import {ParsedApiError, isForbiddenError, parseApiError} from '@/utils/error';
 
 const MAX_PHOTO_EDGE = 1400;
 
 const ensureFileUri = (path: string) => (path.startsWith('file://') ? path : `file://${path}`);
+
+const CapturePreview = React.memo<{uri: string}>(({uri}) => (
+  <View style={styles.previewContainer}>
+    <Image
+      source={{uri}}
+      style={styles.previewImage}
+      resizeMode="contain"
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel="Captured parcel photo preview"
+    />
+  </View>
+));
 
 type ResizedPhoto = {
   path: string;
@@ -45,7 +60,7 @@ export const CaptureScreen: React.FC = () => {
   const [capturedPhoto, setCapturedPhoto] = useState<PhotoFile | null>(null);
   const [remarks, setRemarks] = useState('');
   const [uploadState, setUploadState] = useState<UploadState>({progress: 0, message: ''});
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ParsedApiError | null>(null);
   const [successMessage, setSuccessMessage] = useState('Parcel saved');
 
   const propertyId = property?.propertyId;
@@ -61,7 +76,7 @@ export const CaptureScreen: React.FC = () => {
   }, []);
 
   const handleCameraError = useCallback((runtimeError: CameraRuntimeError) => {
-    setError(runtimeError?.message ?? 'Unable to access the camera.');
+    setError({message: runtimeError?.message ?? 'Unable to access the camera.'});
   }, []);
 
   const takePhoto = useCallback(async () => {
@@ -78,7 +93,7 @@ export const CaptureScreen: React.FC = () => {
       setCapturedPhoto(photo);
       setStep('confirm');
     } catch (err) {
-      setError('Unable to capture photo. Please try again.');
+      setError({message: 'Unable to capture photo. Please try again.'});
     }
   }, [device]);
 
@@ -119,17 +134,31 @@ export const CaptureScreen: React.FC = () => {
 
       const optimized = await optimizePhoto(photo);
       setUploadState({progress: 0.2, message: 'Requesting secure upload'});
-      const {uploadUrl, blobUrl} = await requestParcelUpload({ext: 'jpg'});
+      let sas = await requestParcelUpload({ext: 'jpg'});
 
-      setUploadState({progress: 0.4, message: 'Uploading photo'});
-      await uploadParcelImage(uploadUrl, optimized.path, progress => {
-        setUploadState({progress: 0.4 + progress * 0.5, message: 'Uploading photo'});
-      });
+      const uploadWithSas = async () => {
+        setUploadState({progress: 0.4, message: 'Uploading photo'});
+        await uploadParcelImage(sas.uploadUrl, optimized.path, progress => {
+          setUploadState({progress: 0.4 + progress * 0.5, message: 'Uploading photo'});
+        });
+      };
+
+      try {
+        await uploadWithSas();
+      } catch (err) {
+        if (isForbiddenError(err)) {
+          setUploadState({progress: 0.35, message: 'Refreshing upload link'});
+          sas = await requestParcelUpload({ext: 'jpg'});
+          await uploadWithSas();
+        } else {
+          throw err;
+        }
+      }
 
       setUploadState({progress: 0.95, message: 'Saving parcel'});
       await createParcel({
         propertyId,
-        photoUrl: blobUrl,
+        photoUrl: sas.blobUrl,
         remarks: notes.trim() ? notes.trim() : undefined,
       });
 
@@ -147,7 +176,7 @@ export const CaptureScreen: React.FC = () => {
     }
 
     if (!propertyId) {
-      setError('You are not assigned to a property.');
+      setError({message: 'You are not assigned to a property.'});
       return;
     }
 
@@ -173,7 +202,7 @@ export const CaptureScreen: React.FC = () => {
       await uploadPhoto(capturedPhoto, trimmedRemarks, propertyId);
       setSuccessMessage('Parcel saved');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save parcel. Please try again.');
+      setError(parseApiError(err, 'Failed to save parcel. Please try again.'));
       setStep('confirm');
     }
   }, [capturedPhoto, enqueue, isOnline, optimizePhoto, propertyId, remarks, uploadPhoto]);
@@ -199,6 +228,11 @@ export const CaptureScreen: React.FC = () => {
         <Button
           title={status === 'denied' ? 'Open settings' : 'Grant permission'}
           onPress={status === 'denied' ? handleOpenSettings : requestPermission}
+          accessibilityHint={
+            status === 'denied'
+              ? 'Opens device settings to change camera access'
+              : 'Allows the app to access the camera'
+          }
         />
       </View>
     );
@@ -212,7 +246,11 @@ export const CaptureScreen: React.FC = () => {
         <View style={styles.centered}>
           <Text style={[styles.title, {color: theme.colors.text, marginBottom: 8}]}>Property assignment required</Text>
           <Text style={[styles.subtitle, {color: theme.colors.muted, textAlign: 'center', marginBottom: 24}]}>We couldn't find an assigned property for your account. Please contact your administrator or try refreshing your assignment.</Text>
-          <Button title="Retry assignment" onPress={() => refreshProfile()} />
+          <Button
+            title="Retry assignment"
+            onPress={() => refreshProfile()}
+            accessibilityHint="Fetch your property assignment again"
+          />
         </View>
       </ScreenContainer>
     );
@@ -229,7 +267,7 @@ export const CaptureScreen: React.FC = () => {
         onError={handleCameraError}
       />
       <View style={[styles.shutterContainer, {backgroundColor: `${theme.colors.background}aa`}]}>
-        <Button title="Capture" onPress={takePhoto} />
+        <Button title="Capture" onPress={takePhoto} accessibilityHint="Takes a new parcel photo" />
       </View>
     </View>
   ) : (
@@ -242,14 +280,12 @@ export const CaptureScreen: React.FC = () => {
     )
   );
 
-  const photoPreviewUri = capturedPhoto ? ensureFileUri(capturedPhoto.path) : undefined;
+  const photoPreviewUri = useMemo(() => (capturedPhoto ? ensureFileUri(capturedPhoto.path) : null), [capturedPhoto]);
 
-  const confirmContent = capturedPhoto ? (
+  const confirmContent = capturedPhoto && photoPreviewUri ? (
     <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.confirmContent}>
-        <View style={styles.previewContainer}>
-          <Image source={{uri: photoPreviewUri}} style={styles.previewImage} resizeMode="contain" />
-        </View>
+        <CapturePreview uri={photoPreviewUri} />
         <View style={styles.remarksContainer}>
           <Text style={[styles.label, {color: theme.colors.text}]}>Remarks</Text>
           <TextInput
@@ -260,15 +296,28 @@ export const CaptureScreen: React.FC = () => {
             multiline
             numberOfLines={3}
             style={[styles.input, {borderColor: theme.colors.border, color: theme.colors.text}]}
+            accessibilityLabel="Parcel remarks"
+            accessibilityHint="Add optional notes for this parcel"
           />
         </View>
         {!isOnline ? (
           <Text style={[styles.offlineNotice, {color: theme.colors.muted}]}>You're offline. We'll queue this parcel and sync it once you're connected.</Text>
         ) : null}
-        {error ? <Text style={[styles.errorText, {color: theme.colors.notification}]}>{error}</Text> : null}
+        {error ? <ErrorNotice error={error} variant="inline" style={styles.inlineError} /> : null}
         <View style={styles.actionsRow}>
-          <Button title="Retake" variant="secondary" onPress={resetCapture} style={[styles.actionButton, styles.actionSpacing]} />
-          <Button title="Use photo" onPress={handleUsePhoto} style={styles.actionButton} />
+          <Button
+            title="Retake"
+            variant="secondary"
+            onPress={resetCapture}
+            style={[styles.actionButton, styles.actionSpacing]}
+            accessibilityHint="Discard this photo and capture another"
+          />
+          <Button
+            title="Use photo"
+            onPress={handleUsePhoto}
+            style={styles.actionButton}
+            accessibilityHint="Upload this photo and log the parcel"
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -383,9 +432,8 @@ const styles = StyleSheet.create({
   actionSpacing: {
     marginRight: 12,
   },
-  errorText: {
-    marginBottom: 16,
-    fontSize: 14,
+  inlineError: {
+    marginBottom: 12,
   },
   offlineNotice: {
     marginBottom: 12,

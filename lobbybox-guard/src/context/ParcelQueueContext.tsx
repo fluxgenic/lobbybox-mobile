@@ -12,6 +12,7 @@ import {useQueryClient} from '@tanstack/react-query';
 import {requestParcelUpload, uploadParcelImage, createParcel} from '@/api/parcels';
 import {loadParcelQueue, persistParcelQueue, StoredParcelQueueItem, ParcelQueueStatus} from '@/storage/parcelQueueStorage';
 import {showToast} from '@/utils/toast';
+import {isForbiddenError, parseApiError} from '@/utils/error';
 
 export type ParcelQueueItem = StoredParcelQueueItem;
 
@@ -108,11 +109,25 @@ export const ParcelQueueProvider: React.FC<{children: React.ReactNode}> = ({chil
           error: null,
         });
         try {
-          const {uploadUrl, blobUrl} = await requestParcelUpload({ext: 'jpg'});
-          await uploadParcelImage(uploadUrl, item.localUri);
+          let sas = await requestParcelUpload({ext: 'jpg'});
+
+          const uploadWithSas = async () => {
+            await uploadParcelImage(sas.uploadUrl, item.localUri);
+          };
+
+          try {
+            await uploadWithSas();
+          } catch (err) {
+            if (isForbiddenError(err)) {
+              sas = await requestParcelUpload({ext: 'jpg'});
+              await uploadWithSas();
+            } else {
+              throw err;
+            }
+          }
           await createParcel({
             propertyId: item.propertyId,
-            photoUrl: blobUrl,
+            photoUrl: sas.blobUrl,
             remarks: item.remarks,
           });
           removeItem(attemptId);
@@ -120,7 +135,7 @@ export const ParcelQueueProvider: React.FC<{children: React.ReactNode}> = ({chil
           await queryClient.invalidateQueries({queryKey: ['parcels-history'], exact: false});
           showToast('Queued parcel synced');
         } catch (err) {
-          const message = err instanceof Error ? err.message : 'Failed to sync parcel.';
+          const message = parseApiError(err, 'Failed to sync parcel.').message;
           updateItem(attemptId, {
             status: 'failed',
             error: message,

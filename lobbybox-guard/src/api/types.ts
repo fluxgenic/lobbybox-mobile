@@ -8,7 +8,8 @@ export type PropertyAssignment = {
 export type User = {
   id: string;
   email: string;
-  name: string;
+  name?: string | null;
+  fullName?: string | null;
   role: Role;
   propertyAssignment?: PropertyAssignment | null;
 };

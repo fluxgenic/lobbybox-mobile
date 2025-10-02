@@ -17,6 +17,10 @@ import {Parcel, ParcelQueryParams} from '@/api/types';
 import {useAuth} from '@/hooks/useAuth';
 import {Button} from '@/components/Button';
 import {useParcelQueue} from '@/hooks/useParcelQueue';
+import {ErrorNotice} from '@/components/ErrorNotice';
+import {ParsedApiError, parseApiError} from '@/utils/error';
+import {NavigationProp, useNavigation} from '@react-navigation/native';
+import {AppTabParamList} from '@/navigation/AppNavigator';
 
 const PAGE_SIZE = 20;
 
@@ -79,6 +83,7 @@ export const HistoryScreen: React.FC = () => {
   const {property, refreshProfile} = useAuth();
   const {items: queueItems, retry: retryQueueItem, isOnline} = useParcelQueue();
   const propertyId = property?.propertyId;
+  const navigation = useNavigation<NavigationProp<AppTabParamList>>();
 
   const [form, setForm] = useState<FilterForm>({from: '', to: '', q: ''});
   const [filters, setFilters] = useState<FilterForm>(form);
@@ -144,15 +149,18 @@ export const HistoryScreen: React.FC = () => {
 
   const isRefreshing = isFetching && !isLoading && !isFetchingNextPage;
 
-  const errorMessage = useMemo(() => {
-    if (!error) {
-      return null;
-    }
-    if (error instanceof Error) {
-      return error.message;
-    }
-    return 'Unable to load history. Please try again later.';
-  }, [error]);
+  const parsedError: ParsedApiError | null = useMemo(
+    () => (error ? parseApiError(error, 'Unable to load history. Please try again later.') : null),
+    [error],
+  );
+
+  const handleRetry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+  const handleBackHome = useCallback(() => {
+    navigation.navigate('Capture');
+  }, [navigation]);
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -175,7 +183,11 @@ export const HistoryScreen: React.FC = () => {
           <Text style={[styles.heading, {color: theme.colors.text}]}>History</Text>
           <Text style={[styles.messageTitle, {color: theme.colors.text}]}>Property assignment required</Text>
           <Text style={[styles.messageBody, {color: theme.colors.muted}]}>We couldn't find an assigned property for your account. Please contact your administrator or try refreshing your assignment.</Text>
-          <Button title="Retry assignment" onPress={() => refreshProfile()} />
+          <Button
+            title="Retry assignment"
+            onPress={() => refreshProfile()}
+            accessibilityHint="Fetch your property assignment again"
+          />
         </View>
       </ScreenContainer>
     );
@@ -234,8 +246,16 @@ export const HistoryScreen: React.FC = () => {
           <ActivityIndicator size="small" color={theme.colors.primary} />
         </View>
       ) : null}
+      {parsedError ? (
+        <ErrorNotice
+          error={parsedError}
+          onRetry={handleRetry}
+          onBackToHome={parsedError.status === 403 ? handleBackHome : undefined}
+          style={styles.errorNotice}
+        />
+      ) : null}
       {queuedItems.length > 0 ? (
-        <View style={[styles.queueCard, {backgroundColor: theme.colors.card, borderColor: theme.colors.border}]}> 
+        <View style={[styles.queueCard, {backgroundColor: theme.colors.card, borderColor: theme.colors.border}]}>
           <Text style={[styles.queueHeading, {color: theme.colors.text}]}>Queued uploads</Text>
           <Text style={{color: theme.colors.muted, marginBottom: 12}}>
             {isOnline ? 'These parcels will sync shortly.' : 'Waiting for connection to sync.'}
@@ -266,12 +286,6 @@ export const HistoryScreen: React.FC = () => {
           ))}
         </View>
       ) : null}
-      {errorMessage ? (
-        <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, {color: theme.colors.notification}]}>{errorMessage}</Text>
-          <Button title="Retry" variant="secondary" onPress={() => refetch()} style={styles.errorButton} />
-        </View>
-      ) : null}
     </View>
   );
 
@@ -290,7 +304,7 @@ export const HistoryScreen: React.FC = () => {
           <RefreshControl refreshing={isRefreshing} onRefresh={refetch} tintColor={theme.colors.primary} />
         }
         ListEmptyComponent={
-          !isLoading && parcels.length === 0 && !errorMessage ? (
+          !isLoading && parcels.length === 0 && !parsedError ? (
             <Text style={{color: theme.colors.muted, textAlign: 'center', marginTop: 24}}>
               No parcels match your filters yet.
             </Text>
@@ -414,14 +428,8 @@ const styles = StyleSheet.create({
   queueRetryButton: {
     alignSelf: 'flex-start',
   },
-  errorContainer: {
+  errorNotice: {
     marginTop: 12,
-  },
-  errorText: {
-    fontSize: 14,
-  },
-  errorButton: {
-    marginTop: 8,
   },
   loadingContainer: {
     paddingVertical: 8,

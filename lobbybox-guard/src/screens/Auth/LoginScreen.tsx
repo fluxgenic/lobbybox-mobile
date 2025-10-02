@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useState} from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,6 +11,7 @@ import {
 import {useAuth} from '@/hooks/useAuth';
 import {useThemeContext} from '@/theme';
 import {z} from 'zod';
+import {ErrorNotice} from '@/components/ErrorNotice';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -27,8 +28,6 @@ export const LoginScreen: React.FC = () => {
   const handleChange = (key: 'email' | 'password', value: string) => {
     setForm(prev => ({...prev, [key]: value}));
   };
-
-  const fieldErrors = useMemo(() => ({...errors, api: error ?? undefined}), [errors, error]);
 
   const handleSubmit = async () => {
     clearError();
@@ -67,9 +66,16 @@ export const LoginScreen: React.FC = () => {
           keyboardType="email-address"
           style={[styles.input, {borderColor: theme.colors.border, color: theme.colors.text}]}
           onChangeText={value => handleChange('email', value)}
-          onFocus={() => setErrors(prev => ({...prev, email: undefined}))}
+          onFocus={() => {
+            setErrors(prev => ({...prev, email: undefined}));
+            if (error) {
+              clearError();
+            }
+          }}
+          accessibilityLabel="Email address"
+          accessibilityHint="Enter your email address"
         />
-        {fieldErrors.email ? <Text style={[styles.error, {color: 'red'}]}>{fieldErrors.email}</Text> : null}
+        {errors.email ? <Text style={[styles.error, {color: 'red'}]}>{errors.email}</Text> : null}
         <TextInput
           placeholder="Password"
           placeholderTextColor={theme.colors.muted}
@@ -77,14 +83,24 @@ export const LoginScreen: React.FC = () => {
           secureTextEntry
           style={[styles.input, {borderColor: theme.colors.border, color: theme.colors.text}]}
           onChangeText={value => handleChange('password', value)}
-          onFocus={() => setErrors(prev => ({...prev, password: undefined}))}
+          onFocus={() => {
+            setErrors(prev => ({...prev, password: undefined}));
+            if (error) {
+              clearError();
+            }
+          }}
+          accessibilityLabel="Password"
+          accessibilityHint="Enter your account password"
         />
-        {fieldErrors.password ? <Text style={[styles.error, {color: 'red'}]}>{fieldErrors.password}</Text> : null}
-        {fieldErrors.api ? <Text style={[styles.error, {color: 'red'}]}>{fieldErrors.api}</Text> : null}
+        {errors.password ? <Text style={[styles.error, {color: 'red'}]}>{errors.password}</Text> : null}
+        {error ? <ErrorNotice error={error} variant="inline" style={styles.inlineError} /> : null}
         <TouchableOpacity
           disabled={submitting}
           style={[styles.button, {backgroundColor: theme.colors.primary, opacity: submitting ? 0.7 : 1}]}
-          onPress={handleSubmit}>
+          onPress={handleSubmit}
+          accessibilityRole="button"
+          accessibilityLabel={submitting ? 'Signing in' : 'Login'}
+          accessibilityHint="Authenticates your account">
           <Text style={[styles.buttonLabel, {color: theme.colors.background}]}>{submitting ? 'Signing in…' : 'Login'}</Text>
         </TouchableOpacity>
       </View>
@@ -129,5 +145,8 @@ const styles = StyleSheet.create({
     marginTop: -4,
     marginBottom: 8,
     fontSize: 13,
+  },
+  inlineError: {
+    marginBottom: 8,
   },
 });

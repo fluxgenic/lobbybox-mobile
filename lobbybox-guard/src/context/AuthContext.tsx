@@ -1,9 +1,15 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useState} from 'react';
-import api, {ApiError} from '@/api/client';
+import api from '@/api/client';
 import {authEvents} from '@/api/authEvents';
 import {AuthResponse, GuardProfile, PropertyAssignment, Role, User} from '@/api/types';
 import {tokenStorage} from '@/storage/tokenStorage';
 import {useQueryClient} from '@tanstack/react-query';
+import {ParsedApiError, parseApiError} from '@/utils/error';
+
+const normalizeUser = (profile: User): User => ({
+  ...profile,
+  fullName: profile.fullName ?? profile.name ?? profile.email,
+});
 
 export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -14,7 +20,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   hasRole: (...roles: Role[]) => boolean;
-  error: string | null;
+  error: ParsedApiError | null;
   clearError: () => void;
   refreshProfile: () => Promise<void>;
 };
@@ -33,7 +39,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
   const [status, setStatus] = useState<AuthStatus>('idle');
   const [user, setUser] = useState<User | null>(null);
   const [property, setProperty] = useState<PropertyAssignment | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ParsedApiError | null>(null);
   const queryClient = useQueryClient();
 
   const logout = useCallback(async () => {
@@ -47,8 +53,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
 
   const loadProfile = useCallback(async () => {
     const {data} = await api.get<GuardProfile>('/me');
-    setUser(data);
-    setProperty(data.propertyAssignment ?? null);
+    const normalized = normalizeUser(data);
+    setUser(normalized);
+    setProperty(normalized.propertyAssignment ?? null);
   }, []);
 
   const bootstrap = useCallback(async () => {
@@ -89,16 +96,15 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
       });
-      setUser(data.user);
-      setProperty(data.user.propertyAssignment ?? null);
-      if (!data.user.propertyAssignment) {
+      const normalizedUser = normalizeUser(data.user);
+      setUser(normalizedUser);
+      setProperty(normalizedUser.propertyAssignment ?? null);
+      if (!normalizedUser.propertyAssignment) {
         await loadProfile();
       }
       setStatus('authenticated');
     } catch (err) {
-      const apiError = err as ApiError;
-      const message = apiError.response?.data?.message ?? 'Unable to login. Please try again.';
-      setError(message);
+      setError(parseApiError(err, 'Unable to login. Please try again.'));
       setStatus('unauthenticated');
     }
   }, [loadProfile]);
