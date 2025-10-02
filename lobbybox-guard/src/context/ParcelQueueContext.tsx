@@ -20,6 +20,10 @@ type EnqueuePayload = {
   localUri: string;
   propertyId: string;
   remarks?: string;
+  recipientName?: string;
+  trackingNumber?: string;
+  mobileNumber?: string;
+  collectedAt: string;
 };
 
 type ParcelQueueContextValue = {
@@ -129,6 +133,10 @@ export const ParcelQueueProvider: React.FC<{children: React.ReactNode}> = ({chil
             propertyId: item.propertyId,
             photoUrl: sas.blobUrl,
             remarks: item.remarks,
+            recipientName: item.recipientName,
+            trackingNumber: item.trackingNumber,
+            mobileNumber: item.mobileNumber,
+            collectedAt: item.collectedAt,
           });
           removeItem(attemptId);
           await queryClient.invalidateQueries({queryKey: ['parcels'], exact: false});
@@ -164,12 +172,16 @@ export const ParcelQueueProvider: React.FC<{children: React.ReactNode}> = ({chil
   }, [isOnline, processQueue]);
 
   const enqueue = useCallback(
-    async ({localUri, propertyId, remarks}: EnqueuePayload) => {
+    async ({localUri, propertyId, remarks, recipientName, trackingNumber, mobileNumber, collectedAt}: EnqueuePayload) => {
       const item: ParcelQueueItem = {
         id: generateId(),
         localUri,
         propertyId,
         remarks,
+        recipientName,
+        trackingNumber,
+        mobileNumber,
+        collectedAt,
         createdAt: new Date().toISOString(),
         status: 'queued',
         tries: 0,

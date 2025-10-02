@@ -5,11 +5,45 @@ import {AuthResponse, GuardProfile, PropertyAssignment, Role, User} from '@/api/
 import {tokenStorage} from '@/storage/tokenStorage';
 import {useQueryClient} from '@tanstack/react-query';
 import {ParsedApiError, parseApiError} from '@/utils/error';
+import {listProperties} from '@/api/properties';
 
 const normalizeUser = (profile: User): User => ({
   ...profile,
-  fullName: profile.fullName ?? profile.name ?? profile.email,
+  fullName: profile.fullName ?? profile.email,
 });
+
+const resolvePropertyAssignment = async (profile: User): Promise<PropertyAssignment | null> => {
+  try {
+    const properties = await listProperties({isActive: true});
+    if (!properties.length) {
+      if (profile.properties?.length && profile.propertyName) {
+        return {
+          propertyId: profile.properties[0],
+          propertyName: profile.propertyName,
+        };
+      }
+      return null;
+    }
+
+    if (profile.properties?.length) {
+      const match = properties.find(property => property.id === profile.properties?.[0]);
+      if (match) {
+        return {propertyId: match.id, propertyName: match.name};
+      }
+    }
+
+    const [first] = properties;
+    return first ? {propertyId: first.id, propertyName: first.name} : null;
+  } catch (error) {
+    if (profile.properties?.length && profile.propertyName) {
+      return {
+        propertyId: profile.properties[0],
+        propertyName: profile.propertyName,
+      };
+    }
+    return null;
+  }
+};
 
 export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -55,7 +89,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
     const {data} = await api.get<GuardProfile>('/me');
     const normalized = normalizeUser(data);
     setUser(normalized);
-    setProperty(normalized.propertyAssignment ?? null);
+
+    if (normalized.role === 'GUARD' || normalized.role === 'PROPERTY_ADMIN') {
+      const assignment = await resolvePropertyAssignment(normalized);
+      setProperty(assignment);
+    } else {
+      setProperty(null);
+    }
   }, []);
 
   const bootstrap = useCallback(async () => {
@@ -96,12 +136,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
       });
-      const normalizedUser = normalizeUser(data.user);
-      setUser(normalizedUser);
-      setProperty(normalizedUser.propertyAssignment ?? null);
-      if (!normalizedUser.propertyAssignment) {
-        await loadProfile();
-      }
+      await loadProfile();
       setStatus('authenticated');
     } catch (err) {
       setError(parseApiError(err, 'Unable to login. Please try again.'));

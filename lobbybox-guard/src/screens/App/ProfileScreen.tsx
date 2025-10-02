@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {StyleSheet, Switch, Text, TextInput, View} from 'react-native';
+import dayjs from 'dayjs';
 import {ScreenContainer} from '@/components/ScreenContainer';
 import {useAuth} from '@/hooks/useAuth';
 import {useThemeContext} from '@/theme';
@@ -9,9 +10,10 @@ import {ErrorNotice} from '@/components/ErrorNotice';
 import {changePassword, updateProfile} from '@/api/profile';
 import {ParsedApiError, parseApiError} from '@/utils/error';
 import {showToast} from '@/utils/toast';
+import {Button} from '@/components/Button';
 
 export const ProfileScreen: React.FC = () => {
-  const {user, logout, refreshProfile} = useAuth();
+  const {user, property, logout, refreshProfile} = useAuth();
   const {mode, setMode, theme} = useThemeContext();
 
   const isDark = useMemo(() => mode === 'dark', [mode]);
@@ -82,6 +84,41 @@ export const ProfileScreen: React.FC = () => {
         <Text style={[styles.name, {color: theme.colors.text}]}>{user?.fullName ?? user?.name ?? 'Guard'}</Text>
         <Text style={{color: theme.colors.muted}}>{user?.email}</Text>
         <Text style={[styles.role, {color: theme.colors.secondary}]}>{user?.role}</Text>
+        {user?.lastLoginAt ? (
+          <Text style={{color: theme.colors.muted, marginTop: 4}}>
+            Last login {dayjs(user.lastLoginAt).format('MMM D, YYYY • HH:mm')}
+          </Text>
+        ) : null}
+      </View>
+      <View style={[styles.card, {backgroundColor: theme.colors.card, borderColor: theme.colors.border}]}>
+        <Text style={[styles.cardTitle, {color: theme.colors.text}]}>Assignment</Text>
+        {property ? (
+          <>
+            <Text style={[styles.assignmentName, {color: theme.colors.text}]}>{property.propertyName}</Text>
+            <Text style={{color: theme.colors.muted, marginBottom: 16}}>Property ID: {property.propertyId}</Text>
+            <Button
+              title="Refresh assignment"
+              onPress={() => {
+                void refreshProfile();
+              }}
+              variant="secondary"
+              accessibilityHint="Fetch your latest property assignment"
+            />
+          </>
+        ) : (
+          <>
+            <Text style={{color: theme.colors.muted, marginBottom: 16}}>
+              We couldn't find an assigned property for your account.
+            </Text>
+            <Button
+              title="Retry"
+              onPress={() => {
+                void refreshProfile();
+              }}
+              accessibilityHint="Attempt to fetch your property assignment again"
+            />
+          </>
+        )}
       </View>
       <View style={[styles.card, {backgroundColor: theme.colors.card, borderColor: theme.colors.border}]}>
         <Text style={[styles.cardTitle, {color: theme.colors.text}]}>Profile</Text>
@@ -204,6 +241,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
+  },
+  assignmentName: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   inputLabel: {
     fontSize: 14,

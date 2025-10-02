@@ -17,6 +17,7 @@ import {Parcel, ParcelQueryParams} from '@/api/types';
 import {useAuth} from '@/hooks/useAuth';
 import {Button} from '@/components/Button';
 import {useParcelQueue} from '@/hooks/useParcelQueue';
+import type {ParcelQueueItem} from '@/context/ParcelQueueContext';
 import {ErrorNotice} from '@/components/ErrorNotice';
 import {ParsedApiError, parseApiError} from '@/utils/error';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
@@ -24,7 +25,10 @@ import {AppTabParamList} from '@/navigation/AppNavigator';
 
 const PAGE_SIZE = 20;
 
-const formatTimestamp = (value: string) => {
+const formatTimestamp = (value?: string | null) => {
+  if (!value) {
+    return '—';
+  }
   const parsed = dayjs(value);
   return parsed.isValid() ? parsed.format('MMM D, YYYY • HH:mm') : value;
 };
@@ -62,18 +66,38 @@ const QueueListItem: React.FC<QueueListItemProps> = ({label, status, subtitle, c
   );
 };
 
+const getQueueLabel = (item: ParcelQueueItem) =>
+  item.recipientName ?? item.trackingNumber ?? item.remarks ?? 'Parcel photo';
+
+const getQueueSubtitle = (item: ParcelQueueItem) => {
+  const pieces = [
+    item.trackingNumber ? `Tracking: ${item.trackingNumber}` : null,
+    item.mobileNumber ? `Mobile: ${item.mobileNumber}` : null,
+    item.remarks ? `Notes: ${item.remarks}` : null,
+  ].filter(Boolean);
+  return pieces.length > 0 ? pieces.join('  •  ') : undefined;
+};
+
 const ParcelHistoryCard: React.FC<{parcel: ParcelListItem}> = ({parcel}) => {
   const {theme} = useThemeContext();
+  const collectedAt = parcel.collectedAt ?? parcel.createdAt;
+  const infoLines = [
+    parcel.trackingNumber ? `Tracking: ${parcel.trackingNumber}` : null,
+    parcel.mobileNumber ? `Mobile: ${parcel.mobileNumber}` : null,
+  ].filter(Boolean);
   return (
-    <View style={[styles.card, {backgroundColor: theme.colors.card, borderColor: theme.colors.border}]}> 
+    <View style={[styles.card, {backgroundColor: theme.colors.card, borderColor: theme.colors.border}]}>
       <View style={styles.cardHeader}>
         <Text style={[styles.cardTitle, {color: theme.colors.text}]}>{parcel.recipientName ?? 'Parcel'}</Text>
-        {parcel.trackingNumber ? (
-          <Text style={{color: theme.colors.muted}}>#{parcel.trackingNumber}</Text>
+        {parcel.propertyName ? (
+          <Text style={{color: theme.colors.muted}}>{parcel.propertyName}</Text>
         ) : null}
       </View>
+      {infoLines.length > 0 ? (
+        <Text style={{color: theme.colors.muted, marginBottom: 4}}>{infoLines.join('  •  ')}</Text>
+      ) : null}
       {parcel.remarks ? <Text style={{color: theme.colors.muted, marginBottom: 8}}>{parcel.remarks}</Text> : null}
-      <Text style={{color: theme.colors.text}}>{formatTimestamp(parcel.createdAt)}</Text>
+      <Text style={{color: theme.colors.text}}>{formatTimestamp(collectedAt)}</Text>
     </View>
   );
 };
@@ -226,7 +250,7 @@ export const HistoryScreen: React.FC = () => {
           <Text style={[styles.filterLabel, {color: theme.colors.muted}]}>Search</Text>
           <TextInput
             value={form.q}
-            placeholder="Recipient or tracking"
+            placeholder="Recipient, tracking, or mobile"
             placeholderTextColor={theme.colors.muted}
             onChangeText={value => onChangeField('q', value)}
             style={[styles.input, {color: theme.colors.text, borderColor: theme.colors.border}]}
@@ -263,9 +287,10 @@ export const HistoryScreen: React.FC = () => {
           {queuedItems.map(item => (
             <QueueListItem
               key={item.id}
-              label={item.remarks ?? 'Parcel photo'}
+              label={getQueueLabel(item)}
               status={item.status === 'uploading' ? 'Syncing…' : 'Queued'}
-              createdAt={item.createdAt}
+              createdAt={item.collectedAt ?? item.createdAt}
+              subtitle={getQueueSubtitle(item)}
             />
           ))}
         </View>
@@ -277,10 +302,14 @@ export const HistoryScreen: React.FC = () => {
           {failedItems.map(item => (
             <QueueListItem
               key={item.id}
-              label={item.remarks ?? 'Parcel photo'}
+              label={getQueueLabel(item)}
               status="Failed"
-              createdAt={item.createdAt}
-              subtitle={item.error ?? undefined}
+              createdAt={item.collectedAt ?? item.createdAt}
+              subtitle={
+                item.error
+                  ? [item.error, item.remarks].filter(Boolean).join('  •  ')
+                  : getQueueSubtitle(item)
+              }
               onRetry={() => retryQueueItem(item.id)}
             />
           ))}

@@ -25,13 +25,21 @@ import {AppTabParamList} from '@/navigation/AppNavigator';
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 
-const formatTime = (value: string) => {
+const formatTime = (value?: string | null) => {
+  if (!value) {
+    return '—';
+  }
   const parsed = dayjs(value);
   return parsed.isValid() ? parsed.format('HH:mm') : value;
 };
 
 const ParcelItem: React.FC<{parcel: Parcel}> = ({parcel}) => {
   const {theme} = useThemeContext();
+  const collectedAt = parcel.collectedAt ?? parcel.createdAt;
+  const metaPieces = [
+    parcel.trackingNumber ? `Tracking: ${parcel.trackingNumber}` : null,
+    parcel.mobileNumber ? `Mobile: ${parcel.mobileNumber}` : null,
+  ].filter(Boolean);
 
   const handleViewPhoto = useCallback(async () => {
     if (!parcel.photoUrl) {
@@ -48,13 +56,16 @@ const ParcelItem: React.FC<{parcel: Parcel}> = ({parcel}) => {
   return (
     <View style={[styles.card, {backgroundColor: theme.colors.card, borderColor: theme.colors.border}]}>
       <View style={styles.cardHeader}>
-        <Text style={[styles.time, {color: theme.colors.text}]}>{formatTime(parcel.createdAt)}</Text>
-        {parcel.trackingNumber ? (
-          <Text style={[styles.meta, {color: theme.colors.muted}]}>#{parcel.trackingNumber}</Text>
+        <Text style={[styles.time, {color: theme.colors.text}]}>{formatTime(collectedAt)}</Text>
+        {parcel.propertyName ? (
+          <Text style={[styles.meta, {color: theme.colors.muted}]}>{parcel.propertyName}</Text>
         ) : null}
       </View>
       {parcel.recipientName ? (
         <Text style={[styles.primaryText, {color: theme.colors.text}]}>{parcel.recipientName}</Text>
+      ) : null}
+      {metaPieces.length > 0 ? (
+        <Text style={{color: theme.colors.muted, marginBottom: 4}}>{metaPieces.join('  •  ')}</Text>
       ) : null}
       {parcel.remarks ? <Text style={{color: theme.colors.muted}}>{parcel.remarks}</Text> : null}
       <TouchableOpacity onPress={handleViewPhoto} style={styles.photoLink}>
