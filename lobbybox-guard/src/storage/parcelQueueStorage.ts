@@ -7,6 +7,10 @@ export type StoredParcelQueueItem = {
   localUri: string;
   propertyId: string;
   remarks?: string;
+  recipientName?: string;
+  trackingNumber?: string;
+  mobileNumber?: string;
+  collectedAt: string;
   createdAt: string;
   status: ParcelQueueStatus;
   tries: number;
@@ -14,7 +18,7 @@ export type StoredParcelQueueItem = {
   lastAttemptAt?: string | null;
 };
 
-const STORAGE_KEY = '@lobbybox/parcel-queue/v1';
+const STORAGE_KEY = '@lobbybox/parcel-queue/v2';
 
 export const loadParcelQueue = async (): Promise<StoredParcelQueueItem[]> => {
   try {
@@ -26,7 +30,10 @@ export const loadParcelQueue = async (): Promise<StoredParcelQueueItem[]> => {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    return parsed as StoredParcelQueueItem[];
+    return (parsed as StoredParcelQueueItem[]).map(item => ({
+      ...item,
+      collectedAt: item.collectedAt ?? item.createdAt,
+    }));
   } catch (err) {
     return [];
   }

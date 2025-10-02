@@ -11,8 +11,9 @@ import {
 } from './types';
 import {Buffer} from 'buffer';
 
-export const requestParcelUpload = async (payload: ParcelSasRequest): Promise<ParcelSasResponse> => {
-  const {data} = await api.post<ParcelSasResponse>('/parcels/sas', payload);
+export const requestParcelUpload = async (payload: ParcelSasRequest = {}): Promise<ParcelSasResponse> => {
+  const body: ParcelSasRequest = {ext: payload.ext ?? 'jpg'};
+  const {data} = await api.post<ParcelSasResponse>('/parcels/sas', body);
   return data;
 };
 
@@ -46,53 +47,17 @@ export const createParcel = async (payload: CreateParcelPayload): Promise<Parcel
   return data;
 };
 
-type RawParcelPageResponse =
-  | Parcel[]
-  | ({
-      data?: Parcel[];
-      items?: Parcel[];
-      page?: number;
-      pageSize?: number;
-      total?: number;
-      hasMore?: boolean;
-      nextPage?: number | null;
-      meta?: {
-        page?: number;
-        pageSize?: number;
-        perPage?: number;
-        total?: number;
-        hasMore?: boolean;
-        nextPage?: number | null;
-      };
-    } & Record<string, unknown>);
-
-const normalizeParcelPage = (
-  response: RawParcelPageResponse,
-  fallbackParams: ParcelQueryParams,
-): PaginatedParcelsResponse => {
-  if (Array.isArray(response)) {
-    const items = response;
-    const page = fallbackParams.page ?? 1;
-    const pageSize = fallbackParams.pageSize ?? items.length;
-    return {items, page, pageSize, total: items.length, hasMore: false};
-  }
-
-  const meta = (response.meta ?? {}) as {
-    page?: number;
-    pageSize?: number;
-    perPage?: number;
-    total?: number;
-    hasMore?: boolean;
-    nextPage?: number | null;
-  };
-
-  const items = (response.data ?? response.items ?? []) as Parcel[];
-  const page = response.page ?? meta.page ?? fallbackParams.page ?? 1;
-  const pageSize =
-    response.pageSize ?? meta.pageSize ?? meta.perPage ?? fallbackParams.pageSize ?? items.length;
-  const total = response.total ?? meta.total ?? items.length;
-  const hasMore =
-    response.hasMore ?? meta.hasMore ?? (meta.nextPage ?? response.nextPage ?? null) !== null;
+export const fetchParcelsPage = async (
+  params: ParcelQueryParams,
+): Promise<PaginatedParcelsResponse> => {
+  const {data} = await api.get<{data: Parcel[]; page: number; pageSize: number; total: number}>('/parcels', {
+    params,
+  });
+  const items = data.data ?? [];
+  const page = data.page ?? params.page ?? 1;
+  const pageSize = data.pageSize ?? params.pageSize ?? items.length;
+  const total = data.total ?? items.length;
+  const hasMore = page * pageSize < total;
 
   return {
     items,
@@ -103,20 +68,16 @@ const normalizeParcelPage = (
   };
 };
 
-export const fetchParcelsPage = async (
-  params: ParcelQueryParams,
-): Promise<PaginatedParcelsResponse> => {
-  const {data} = await api.get<RawParcelPageResponse>('/parcels', {
-    params,
-  });
-  return normalizeParcelPage(data, params);
-};
-
 export const fetchParcelsForDate = async (
   date: string,
   propertyId?: string,
   pageSize = 50,
 ): Promise<Parcel[]> => {
-  const response = await fetchParcelsPage({from: date, to: date, page: 1, pageSize, propertyId});
+  const response = await fetchParcelsPage({
+    date,
+    page: 1,
+    pageSize,
+    propertyId,
+  });
   return response.items;
 };

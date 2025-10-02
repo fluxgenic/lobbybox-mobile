@@ -10,7 +10,7 @@ import {HistoryScreen} from '@/screens/App/HistoryScreen';
 import {ProfileScreen} from '@/screens/App/ProfileScreen';
 import {GuardRestrictionScreen} from '@/screens/App/GuardRestrictionScreen';
 import {useAuth} from '@/hooks/useAuth';
-import {LoadingView} from '@/components/LoadingView';
+import {SplashScreen} from '@/components/SplashScreen';
 import {useThemeContext} from '@/theme';
 
 export type AuthStackParamList = {
@@ -68,7 +68,7 @@ export const AppNavigator: React.FC = () => {
   const {theme, mode} = useThemeContext();
 
   if (status === 'idle' || status === 'loading') {
-    return <LoadingView />;
+    return <SplashScreen />;
   }
 
   const isGuard = user?.role === 'GUARD';

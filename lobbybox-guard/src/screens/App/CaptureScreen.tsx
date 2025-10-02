@@ -58,6 +58,9 @@ export const CaptureScreen: React.FC = () => {
 
   const [step, setStep] = useState<CaptureStep>('capture');
   const [capturedPhoto, setCapturedPhoto] = useState<PhotoFile | null>(null);
+  const [recipientName, setRecipientName] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [trackingNumber, setTrackingNumber] = useState('');
   const [remarks, setRemarks] = useState('');
   const [uploadState, setUploadState] = useState<UploadState>({progress: 0, message: ''});
   const [error, setError] = useState<ParsedApiError | null>(null);
@@ -99,6 +102,9 @@ export const CaptureScreen: React.FC = () => {
 
   const resetCapture = useCallback(() => {
     setCapturedPhoto(null);
+    setRecipientName('');
+    setMobileNumber('');
+    setTrackingNumber('');
     setRemarks('');
     setUploadState({progress: 0, message: ''});
     setError(null);
@@ -128,7 +134,17 @@ export const CaptureScreen: React.FC = () => {
   );
 
   const uploadPhoto = useCallback(
-    async (photo: PhotoFile, notes: string, propertyId: string) => {
+    async (
+      photo: PhotoFile,
+      details: {
+        remarks?: string;
+        recipientName?: string;
+        trackingNumber?: string;
+        mobileNumber?: string;
+        collectedAt: string;
+      },
+      propertyId: string,
+    ) => {
       setStep('uploading');
       setUploadState({progress: 0, message: 'Preparing photo'});
 
@@ -159,14 +175,19 @@ export const CaptureScreen: React.FC = () => {
       await createParcel({
         propertyId,
         photoUrl: sas.blobUrl,
-        remarks: notes.trim() ? notes.trim() : undefined,
+        remarks: details.remarks,
+        recipientName: details.recipientName,
+        trackingNumber: details.trackingNumber,
+        mobileNumber: details.mobileNumber,
+        collectedAt: details.collectedAt,
       });
 
       await queryClient.invalidateQueries({queryKey: ['parcels'], exact: false});
+      await queryClient.invalidateQueries({queryKey: ['parcels-history'], exact: false});
       setUploadState({progress: 1, message: 'Complete'});
       showToast('Parcel saved');
       setStep('success');
-    },
+  },
     [optimizePhoto, queryClient],
   );
 
@@ -183,6 +204,10 @@ export const CaptureScreen: React.FC = () => {
     try {
       setError(null);
       const trimmedRemarks = remarks.trim();
+      const trimmedRecipient = recipientName.trim();
+      const trimmedTracking = trackingNumber.trim();
+      const trimmedMobile = mobileNumber.trim();
+      const collectedAt = new Date().toISOString();
 
       if (!isOnline) {
         const optimized = await optimizePhoto(capturedPhoto);
@@ -190,22 +215,50 @@ export const CaptureScreen: React.FC = () => {
           localUri: ensureFileUri(optimized.path),
           propertyId,
           remarks: trimmedRemarks ? trimmedRemarks : undefined,
+          recipientName: trimmedRecipient ? trimmedRecipient : undefined,
+          trackingNumber: trimmedTracking ? trimmedTracking : undefined,
+          mobileNumber: trimmedMobile ? trimmedMobile : undefined,
+          collectedAt,
         });
         showToast('Parcel queued for upload');
         setCapturedPhoto(null);
+        setRecipientName('');
+        setMobileNumber('');
+        setTrackingNumber('');
         setRemarks('');
         setSuccessMessage('Parcel queued for sync');
         setStep('success');
         return;
       }
 
-      await uploadPhoto(capturedPhoto, trimmedRemarks, propertyId);
+      await uploadPhoto(
+        capturedPhoto,
+        {
+          remarks: trimmedRemarks ? trimmedRemarks : undefined,
+          recipientName: trimmedRecipient ? trimmedRecipient : undefined,
+          trackingNumber: trimmedTracking ? trimmedTracking : undefined,
+          mobileNumber: trimmedMobile ? trimmedMobile : undefined,
+          collectedAt,
+        },
+        propertyId,
+      );
       setSuccessMessage('Parcel saved');
     } catch (err) {
       setError(parseApiError(err, 'Failed to save parcel. Please try again.'));
       setStep('confirm');
     }
-  }, [capturedPhoto, enqueue, isOnline, optimizePhoto, propertyId, remarks, uploadPhoto]);
+  }, [
+    capturedPhoto,
+    enqueue,
+    isOnline,
+    optimizePhoto,
+    propertyId,
+    remarks,
+    recipientName,
+    trackingNumber,
+    mobileNumber,
+    uploadPhoto,
+  ]);
 
   const handleViewToday = useCallback(() => {
     navigation.navigate('Today');
@@ -286,6 +339,44 @@ export const CaptureScreen: React.FC = () => {
     <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.confirmContent}>
         <CapturePreview uri={photoPreviewUri} />
+        <View style={styles.fieldGroup}>
+          <Text style={[styles.label, {color: theme.colors.text}]}>Recipient name</Text>
+          <TextInput
+            value={recipientName}
+            onChangeText={setRecipientName}
+            placeholder="Who is this parcel for?"
+            placeholderTextColor={theme.colors.muted}
+            style={[styles.textField, {borderColor: theme.colors.border, color: theme.colors.text}]}
+            accessibilityLabel="Recipient name"
+            accessibilityHint="Add the name written on the parcel"
+          />
+        </View>
+        <View style={styles.fieldGroup}>
+          <Text style={[styles.label, {color: theme.colors.text}]}>Mobile number</Text>
+          <TextInput
+            value={mobileNumber}
+            onChangeText={setMobileNumber}
+            placeholder="Optional contact number"
+            placeholderTextColor={theme.colors.muted}
+            keyboardType="phone-pad"
+            style={[styles.textField, {borderColor: theme.colors.border, color: theme.colors.text}]}
+            accessibilityLabel="Recipient mobile number"
+            accessibilityHint="Add the mobile number on the parcel if available"
+          />
+        </View>
+        <View style={styles.fieldGroup}>
+          <Text style={[styles.label, {color: theme.colors.text}]}>Tracking number</Text>
+          <TextInput
+            value={trackingNumber}
+            onChangeText={setTrackingNumber}
+            placeholder="Scan or type the tracking code"
+            placeholderTextColor={theme.colors.muted}
+            autoCapitalize="characters"
+            style={[styles.textField, {borderColor: theme.colors.border, color: theme.colors.text}]}
+            accessibilityLabel="Tracking number"
+            accessibilityHint="Add the tracking number printed on the parcel"
+          />
+        </View>
         <View style={styles.remarksContainer}>
           <Text style={[styles.label, {color: theme.colors.text}]}>Remarks</Text>
           <TextInput
@@ -295,7 +386,7 @@ export const CaptureScreen: React.FC = () => {
             placeholderTextColor={theme.colors.muted}
             multiline
             numberOfLines={3}
-            style={[styles.input, {borderColor: theme.colors.border, color: theme.colors.text}]}
+            style={[styles.textArea, {borderColor: theme.colors.border, color: theme.colors.text}]}
             accessibilityLabel="Parcel remarks"
             accessibilityHint="Add optional notes for this parcel"
           />
@@ -406,6 +497,9 @@ const styles = StyleSheet.create({
   previewImage: {
     flex: 1,
   },
+  fieldGroup: {
+    marginBottom: 16,
+  },
   remarksContainer: {
     marginBottom: 16,
   },
@@ -414,7 +508,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
   },
-  input: {
+  textField: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  textArea: {
     minHeight: 96,
     borderWidth: 1,
     borderRadius: 12,
