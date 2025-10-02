@@ -10,7 +10,16 @@ type Props = TouchableOpacityProps & {
   style?: StyleProp<ViewStyle>;
 };
 
-export const Button: React.FC<Props> = ({title, variant = 'primary', style, disabled, ...rest}) => {
+export const Button: React.FC<Props> = ({
+  title,
+  variant = 'primary',
+  style,
+  disabled,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityRole,
+  ...rest
+}) => {
   const {theme} = useThemeContext();
   const styles = getStyles(theme.colors, disabled ?? false);
 
@@ -18,7 +27,14 @@ export const Button: React.FC<Props> = ({title, variant = 'primary', style, disa
   const textStyle = [styles.text, styles[`${variant}Text` as const]];
 
   return (
-    <TouchableOpacity {...rest} style={containerStyle} disabled={disabled} activeOpacity={0.7}>
+    <TouchableOpacity
+      {...rest}
+      style={containerStyle}
+      disabled={disabled}
+      activeOpacity={0.7}
+      accessibilityRole={accessibilityRole ?? 'button'}
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityHint={accessibilityHint}>
       <Text style={textStyle}>{title}</Text>
     </TouchableOpacity>
   );

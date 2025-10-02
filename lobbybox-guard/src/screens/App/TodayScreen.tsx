@@ -12,11 +12,16 @@ import {
 import dayjs from 'dayjs';
 import {useQuery} from '@tanstack/react-query';
 import {ScreenContainer} from '@/components/ScreenContainer';
+import {Button} from '@/components/Button';
 import {useThemeContext} from '@/theme';
 import {fetchParcelsForDate} from '@/api/parcels';
 import {Parcel} from '@/api/types';
 import {showToast} from '@/utils/toast';
 import {useAuth} from '@/hooks/useAuth';
+import {ErrorNotice} from '@/components/ErrorNotice';
+import {ParsedApiError, parseApiError} from '@/utils/error';
+import {NavigationProp, useNavigation} from '@react-navigation/native';
+import {AppTabParamList} from '@/navigation/AppNavigator';
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 
@@ -62,6 +67,7 @@ const ParcelItem: React.FC<{parcel: Parcel}> = ({parcel}) => {
 export const TodayScreen: React.FC = () => {
   const {theme} = useThemeContext();
   const {property, refreshProfile} = useAuth();
+  const navigation = useNavigation<NavigationProp<AppTabParamList>>();
   const today = useMemo(() => dayjs().format(DATE_FORMAT), []);
   const propertyId = property?.propertyId;
 
@@ -79,15 +85,18 @@ export const TodayScreen: React.FC = () => {
 
   const isRefreshing = isFetching && !isLoading;
 
-  const errorMessage = useMemo(() => {
-    if (!error) {
-      return null;
-    }
-    if (error instanceof Error) {
-      return error.message;
-    }
-    return 'Unable to load parcels. Please try again later.';
-  }, [error]);
+  const parsedError: ParsedApiError | null = useMemo(
+    () => (error ? parseApiError(error, 'Unable to load parcels. Please try again later.') : null),
+    [error],
+  );
+
+  const handleRetry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+  const handleBackHome = useCallback(() => {
+    navigation.navigate('Capture');
+  }, [navigation]);
 
   const renderItem = useCallback(({item}: {item: Parcel}) => <ParcelItem parcel={item} />, []);
 
@@ -98,9 +107,11 @@ export const TodayScreen: React.FC = () => {
           <Text style={[styles.heading, {color: theme.colors.text}]}>Today · {dayjs(today).format('MMM D, YYYY')}</Text>
           <Text style={[styles.messageTitle, {color: theme.colors.text}]}>Property assignment required</Text>
           <Text style={[styles.messageBody, {color: theme.colors.muted}]}>We couldn't find an assigned property for your account. Please contact your administrator or try refreshing your assignment.</Text>
-          <TouchableOpacity onPress={() => refreshProfile()}>
-            <Text style={{color: theme.colors.primary}}>Tap to retry assignment</Text>
-          </TouchableOpacity>
+          <Button
+            title="Retry assignment"
+            onPress={() => refreshProfile()}
+            accessibilityHint="Fetch your property assignment again"
+          />
         </View>
       </ScreenContainer>
     );
@@ -117,13 +128,13 @@ export const TodayScreen: React.FC = () => {
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : null}
-      {errorMessage ? (
-        <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, {color: theme.colors.notification}]}>{errorMessage}</Text>
-          <TouchableOpacity onPress={() => refetch()}>
-            <Text style={{color: theme.colors.primary}}>Tap to retry</Text>
-          </TouchableOpacity>
-        </View>
+      {parsedError ? (
+        <ErrorNotice
+          error={parsedError}
+          onRetry={handleRetry}
+          onBackToHome={parsedError.status === 403 ? handleBackHome : undefined}
+          style={styles.errorNotice}
+        />
       ) : null}
       <FlatList
         data={parcels ?? []}
@@ -133,7 +144,7 @@ export const TodayScreen: React.FC = () => {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} tintColor={theme.colors.primary} />}
         ListEmptyComponent={
-          !isLoading && !errorMessage ? (
+          !isLoading && !parsedError ? (
             <Text style={{color: theme.colors.muted, textAlign: 'center', marginTop: 32}}>No parcels logged today yet.</Text>
           ) : null
         }
@@ -187,12 +198,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  errorContainer: {
-    paddingVertical: 16,
-  },
-  errorText: {
-    fontSize: 14,
-    marginBottom: 8,
+  errorNotice: {
+    marginBottom: 16,
   },
   messageContainer: {
     flex: 1,
