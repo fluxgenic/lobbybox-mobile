@@ -16,7 +16,15 @@ if (!fs.existsSync(targetFile)) {
 }
 
 const marker = 'private inline fun <reified T : Any> Project.serviceOf(): T';
+const importNeedle = 'import org.gradle.configurationcache.extensions.serviceOf';
 const raw = fs.readFileSync(targetFile, 'utf8');
+
+if (raw.includes(importNeedle)) {
+  console.log(
+    '[patch-react-native-gradle-plugin] build.gradle.kts uses configurationcache serviceOf. Skipping patch.'
+  );
+  process.exit(0);
+}
 
 if (raw.includes(marker)) {
   console.log('[patch-react-native-gradle-plugin] build.gradle.kts already patched.');
@@ -24,8 +32,6 @@ if (raw.includes(marker)) {
 }
 
 let updated = raw;
-
-const importNeedle = 'import org.gradle.configurationcache.extensions.serviceOf';
 if (updated.includes(importNeedle)) {
   updated = updated.replace(
     importNeedle,
