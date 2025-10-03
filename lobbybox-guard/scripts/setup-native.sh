@@ -5,7 +5,7 @@ PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 TEMPLATE_NAME="LobbyboxGuardNativeTemplate"
 RN_VERSION="0.74.3"
 RN_CLI_PACKAGE="@react-native-community/cli"
-RN_CLI_VERSION="12.4.1"
+RN_CLI_VERSION="13.6.9"
 
 TMP_ROOT=$(mktemp -d 2>/dev/null || mktemp -d -t lobbybox-guard-native)
 TEMPLATE_PATH="$TMP_ROOT/$TEMPLATE_NAME"
@@ -36,7 +36,7 @@ fi
   --directory "$TEMPLATE_PATH" \
   --skip-install \
   --install-pods false \
-  --package-manager npm
+  --pm npm
 
 ANDROID_SOURCE="$TEMPLATE_PATH/android"
 IOS_SOURCE="$TEMPLATE_PATH/ios"
