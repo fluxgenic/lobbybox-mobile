@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-TEMPLATE_NAME="LobbyboxGuardNativeTemplate"
+TEMPLATE_NAME="LobbyboxApp"
 RN_VERSION="0.74.3"
 RN_CLI_PACKAGE="@react-native-community/cli"
 RN_CLI_VERSION="13.6.9"
