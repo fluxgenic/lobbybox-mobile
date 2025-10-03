@@ -1,7 +1,5 @@
 # React Native
 node_modules/
-android/
-ios/
 build/
 .expo/
 web-build/
