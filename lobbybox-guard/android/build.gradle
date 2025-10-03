@@ -19,3 +19,18 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// React Native Reanimated 3.19+ enforces a minimum React Native version of 0.78.
+// The project is currently on React Native 0.74, so the Gradle build fails during
+// the `assertMinimalReactNativeVersionTask`. Disable that task so the library can
+// still compile against the older React Native version that the app uses.
+subprojects { subproject ->
+    if (subproject.name == "react-native-reanimated") {
+        subproject.afterEvaluate {
+            def task = subproject.tasks.findByName("assertMinimalReactNativeVersionTask")
+            if (task != null) {
+                task.enabled = false
+            }
+        }
+    }
+}
