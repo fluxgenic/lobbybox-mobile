@@ -36,7 +36,7 @@ fi
   --directory "$TEMPLATE_PATH" \
   --skip-install \
   --install-pods false \
-  --package-manager npm
+  --pm npm
 
 ANDROID_SOURCE="$TEMPLATE_PATH/android"
 IOS_SOURCE="$TEMPLATE_PATH/ios"
