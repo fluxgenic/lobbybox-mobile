@@ -63,7 +63,7 @@ npm run android
 npm run ios
 ```
 
-> **Note:** Native iOS/Android projects are not included in this repository snapshot. Generate them with `npx @react-native-community/cli init LobbyboxGuard --template react-native-template-typescript` if you need native build scaffolding. The React Native CLI requires the project name to be alphanumeric, so avoid hyphens or other punctuation when choosing the identifier.
+> **Note:** Native iOS/Android projects are not included in this repository snapshot by default. Run [`scripts/setup-native.sh`](./scripts/setup-native.sh) to scaffold them locally using the React Native CLI (`npx react-native@0.74.3 init ...`). The helper script mirrors the TypeScript template and copies the generated `android` and `ios` directories into this workspace. The React Native CLI requires the project name to be alphanumeric, so avoid hyphens or other punctuation when choosing the identifier.
 
 ## Configuration
 
