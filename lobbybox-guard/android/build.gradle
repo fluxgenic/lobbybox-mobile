@@ -1,3 +1,5 @@
+import org.gradle.api.JavaVersion
+
 buildscript {
     ext {
         buildToolsVersion = "34.0.0"
@@ -30,6 +32,32 @@ subprojects { subproject ->
             if (task.name == "assertMinimalReactNativeVersionTask") {
                 task.enabled = false
             }
+        }
+    }
+
+    subproject.plugins.withId("com.android.application") {
+        def androidExtension = subproject.extensions.findByName("android")
+        if (androidExtension != null && androidExtension.hasProperty("compileOptions")) {
+            androidExtension.compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+    }
+
+    subproject.plugins.withId("com.android.library") {
+        def androidExtension = subproject.extensions.findByName("android")
+        if (androidExtension != null && androidExtension.hasProperty("compileOptions")) {
+            androidExtension.compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+    }
+
+    subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { task ->
+        task.kotlinOptions {
+            jvmTarget = JavaVersion.VERSION_17.toString()
         }
     }
 
