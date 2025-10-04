@@ -14,9 +14,9 @@ const debugOverlayShimPath = path.resolve(
 );
 
 const defaultResolveRequest =
-  config.resolver.resolveRequest ?? ((context, moduleName, platform) =>
-    resolve(context, moduleName, platform),
-  );
+  config.resolver.resolveRequest ??
+    ((context, moduleName, platform) =>
+      resolve(context, moduleName, platform));
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === debugOverlaySpecModule) {
