@@ -2,6 +2,8 @@
 
 Expo-managed mobile shell for Lobbybox parcel guards. Phase 1 delivers the authentication flow and app scaffolding required to reach the Home and Settings screens after a successful login.
 
+> **Note:** The project targets Expo SDK 54. Use the current Expo Go client (SDK 54) or ensure device builds are aligned before testing.
+
 ## Getting started
 
 1. Install dependencies:
