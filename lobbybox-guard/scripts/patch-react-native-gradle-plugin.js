@@ -17,6 +17,7 @@ if (!fs.existsSync(targetFile)) {
 
 const marker = 'private inline fun <reified T : Any> Project.serviceOf(): T';
 const importNeedle = 'import org.gradle.configurationcache.extensions.serviceOf';
+const gradleServicesImport = 'import org.gradle.kotlin.dsl.services';
 const raw = fs.readFileSync(targetFile, 'utf8');
 
 if (raw.includes(importNeedle)) {
@@ -32,16 +33,23 @@ if (raw.includes(marker)) {
 }
 
 let updated = raw;
-if (updated.includes(importNeedle)) {
-  updated = updated.replace(
-    importNeedle,
-    'import org.gradle.api.Project\nimport org.gradle.api.internal.HasServices'
-  );
-} else if (!updated.includes('import org.gradle.api.internal.HasServices')) {
-  updated = updated.replace(
-    'import org.jetbrains.kotlin.gradle.tasks.KotlinCompile',
-    "import org.jetbrains.kotlin.gradle.tasks.KotlinCompile\nimport org.gradle.api.Project\nimport org.gradle.api.internal.HasServices"
-  );
+if (updated.includes('import org.gradle.api.internal.HasServices')) {
+  updated = updated.replace('import org.gradle.api.internal.HasServices\n', '');
+  updated = updated.replace('import org.gradle.api.internal.HasServices', '');
+}
+
+if (!updated.includes(gradleServicesImport)) {
+  if (updated.includes(importNeedle)) {
+    updated = updated.replace(
+      importNeedle,
+      `import org.gradle.api.Project\n${gradleServicesImport}`
+    );
+  } else {
+    updated = updated.replace(
+      'import org.jetbrains.kotlin.gradle.tasks.KotlinCompile',
+      `import org.jetbrains.kotlin.gradle.tasks.KotlinCompile\nimport org.gradle.api.Project\n${gradleServicesImport}`
+    );
+  }
 }
 
 const serviceCallNeedle = 'serviceOf<ModuleRegistry>()';
@@ -50,7 +58,7 @@ if (updated.includes(serviceCallNeedle)) {
 }
 
 if (!updated.includes(marker)) {
-  updated = `${updated}\nprivate fun <T : Any> Project.serviceOf(type: Class<T>): T =\n    (this as HasServices).services.get(type)\n\nprivate inline fun <reified T : Any> Project.serviceOf(): T = serviceOf(T::class.java)\n`;
+  updated = `${updated}\nprivate fun <T : Any> Project.serviceOf(type: Class<T>): T =\n    services.get(type)\n\nprivate inline fun <reified T : Any> Project.serviceOf(): T = serviceOf(T::class.java)\n`;
 }
 
 fs.writeFileSync(targetFile, updated, 'utf8');
