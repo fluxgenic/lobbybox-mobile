@@ -1,14 +1,17 @@
 import axios, {AxiosError, AxiosInstance, AxiosRequestConfig} from 'axios';
-import {API_BASE_PATH} from '@/config/env';
+import {API_BASE_URL} from '@/config/env';
 import {authEvents} from './authEvents';
 import {tokenStorage} from '@/storage/tokenStorage';
+import {recordRequestId} from '@/debug/debugEvents';
+
+type ErrorWithRequestId = AxiosError<{message?: string; code?: string; requestId?: string}>;
+
+type RetryConfig = AxiosRequestConfig & {_retry?: boolean};
 
 const api: AxiosInstance = axios.create({
-  baseURL: API_BASE_PATH,
+  baseURL: API_BASE_URL || undefined,
   timeout: 15000,
 });
-
-type RetryConfig = AxiosRequestConfig & { _retry?: boolean };
 
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
@@ -25,7 +28,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
       if (!refreshToken) {
         return null;
       }
-      const response = await axios.post(`${API_BASE_PATH}/auth/refresh`, {
+      const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
         refreshToken,
       });
       const {accessToken, refreshToken: newRefreshToken} = response.data ?? {};
@@ -46,6 +49,21 @@ const refreshAccessToken = async (): Promise<string | null> => {
   return token;
 };
 
+const extractRequestId = (error: ErrorWithRequestId): string | null => {
+  const payloadId = error.response?.data?.requestId;
+  if (payloadId) {
+    return payloadId;
+  }
+  const headerId = error.response?.headers?.['x-request-id'];
+  if (Array.isArray(headerId)) {
+    return headerId[0] ?? null;
+  }
+  if (typeof headerId === 'string') {
+    return headerId;
+  }
+  return null;
+};
+
 api.interceptors.request.use(async config => {
   const token = await tokenStorage.getAccessToken();
   if (token && config.headers) {
@@ -59,6 +77,13 @@ api.interceptors.response.use(
   async error => {
     const originalRequest = error.config as RetryConfig;
     const status = error?.response?.status;
+
+    if (axios.isAxiosError(error)) {
+      const requestId = extractRequestId(error as ErrorWithRequestId);
+      if (requestId) {
+        recordRequestId(requestId);
+      }
+    }
 
     if (status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -84,6 +109,6 @@ api.interceptors.response.use(
   },
 );
 
-export type ApiError = AxiosError<{message?: string; code?: string; requestId?: string}>;
+export type ApiError = ErrorWithRequestId;
 
 export default api;

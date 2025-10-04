@@ -1,30 +1,25 @@
 import React from 'react';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {enableScreens} from 'react-native-screens';
-import {AppNavigator} from '@/navigation/AppNavigator';
-import {AuthProvider} from '@/context/AuthContext';
-import {ParcelQueueProvider} from '@/context/ParcelQueueContext';
 import {ThemeProvider} from '@/theme';
+import {AuthProvider} from '@/context/AuthContext';
+import {AppNavigator} from '@/navigation/AppNavigator';
+import {DebugProvider} from '@/debug/DebugContext';
 
 enableScreens();
-
-const queryClient = new QueryClient();
 
 const App: React.FC = () => {
   return (
     <GestureHandlerRootView style={{flex: 1}}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
+        <ThemeProvider>
+          <DebugProvider>
             <AuthProvider>
-              <ParcelQueueProvider>
-                <AppNavigator />
-              </ParcelQueueProvider>
+              <AppNavigator />
             </AuthProvider>
-          </ThemeProvider>
-        </QueryClientProvider>
+          </DebugProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

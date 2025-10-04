@@ -1,55 +1,32 @@
-import {Platform} from 'react-native';
+import Constants from 'expo-constants';
 
-export type AppEnvironment = 'debug' | 'staging' | 'production';
+const {expoConfig} = Constants;
+const extra = (expoConfig?.extra ?? {}) as Record<string, unknown>;
 
-type RuntimeConfig = {
-  env?: string;
-  apiBaseUrl?: string;
-};
-
-const DEFAULT_HOSTS: Record<AppEnvironment, string> = {
-  debug: Platform.select({
-    ios: 'http://localhost:3000',
-    android: 'http://10.0.2.2:3000',
-    default: 'http://localhost:3000',
-  })!,
-  staging: 'https://staging.api.lobbybox.app',
-  production: 'https://api.lobbybox.app',
-};
-
-let overrides: RuntimeConfig = (globalThis as any).__APP_CONFIG ?? {};
-
-const normalizeEnv = (value?: string): AppEnvironment => {
+const sanitizeUrl = (value?: string): string => {
   if (!value) {
-    return __DEV__ ? 'debug' : 'production';
+    return '';
   }
-
-  switch (value.toLowerCase()) {
-    case 'debug':
-    case 'development':
-    case 'dev':
-      return 'debug';
-    case 'stage':
-    case 'staging':
-      return 'staging';
-    case 'prod':
-    case 'production':
-      return 'production';
-    default:
-      return __DEV__ ? 'debug' : 'production';
-  }
+  return value.replace(/\/+$/, '');
 };
 
-export const configureEnvironment = (config: RuntimeConfig) => {
-  overrides = {
-    ...overrides,
-    ...config,
-  };
+const parseBoolean = (value: unknown, defaultValue: boolean): boolean => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true';
+  }
+  return defaultValue;
 };
 
-export const APP_ENV: AppEnvironment = normalizeEnv(overrides.env);
+export const APP_ENV = (extra.appEnv as string | undefined) ?? 'development';
 
-const resolvedBaseUrl = overrides.apiBaseUrl ?? DEFAULT_HOSTS[APP_ENV];
+export const API_BASE_URL = sanitizeUrl(extra.apiBaseUrl as string | undefined);
 
-export const API_BASE_URL = resolvedBaseUrl;
-export const API_BASE_PATH = `${resolvedBaseUrl.replace(/\/+$/, '')}/v1`;
+const rawFeatureFlags = (extra.featureFlags as Record<string, unknown> | undefined) ?? {};
+
+export const FEATURE_FLAGS = {
+  GUARD_HISTORY_LOCAL_ONLY: parseBoolean(rawFeatureFlags.GUARD_HISTORY_LOCAL_ONLY, true),
+  SHOW_DEBUG_PANEL: parseBoolean(rawFeatureFlags.SHOW_DEBUG_PANEL, false),
+};

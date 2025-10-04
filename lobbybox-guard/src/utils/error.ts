@@ -1,4 +1,5 @@
 import axios from 'axios';
+import {recordRequestId} from '@/debug/debugEvents';
 
 export type ParsedApiError = {
   message: string;
@@ -38,13 +39,17 @@ export const parseApiError = (
     const payload = (error.response?.data ?? {}) as ErrorPayload | undefined;
     const message = getMessage(payload, error.message, fallbackMessage);
 
-    return {
+    const parsed: ParsedApiError = {
       message,
       code: payload?.code ?? undefined,
       requestId: payload?.requestId ?? undefined,
       status,
       original: error,
     };
+    if (parsed.requestId) {
+      recordRequestId(parsed.requestId);
+    }
+    return parsed;
   }
 
   if (error instanceof Error) {
