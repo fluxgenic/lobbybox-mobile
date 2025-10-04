@@ -6,8 +6,8 @@ const config = getDefaultConfig(__dirname);
 
 config.resolver.sourceExts.push('cjs');
 
-const debugOverlaySpecModule =
-  'react-native/src/private/specs/components/DebuggingOverlayNativeComponent';
+const debugOverlaySpecModuleSuffix =
+  'src/private/specs/components/DebuggingOverlayNativeComponent';
 const debugOverlayShimPath = path.resolve(
   __dirname,
   'src/shims/DebuggingOverlayNativeComponent.js',
@@ -19,7 +19,11 @@ const defaultResolveRequest =
       resolve(context, moduleName, platform));
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (moduleName === debugOverlaySpecModule) {
+  const normalizedModuleName = moduleName
+    .replace(/\\/g, '/')
+    .replace(/\.js$/, '');
+
+  if (normalizedModuleName.endsWith(debugOverlaySpecModuleSuffix)) {
     return {
       type: 'sourceFile',
       filePath: debugOverlayShimPath,
