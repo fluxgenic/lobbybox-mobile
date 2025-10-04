@@ -8,14 +8,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {useAuth} from '@/hooks/useAuth';
-import {useThemeContext} from '@/theme';
 import {z} from 'zod';
+import {useAuth} from '@/context/AuthContext';
+import {useThemeContext} from '@/theme';
 import {ErrorNotice} from '@/components/ErrorNotice';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
-  password: z.string().min(6, 'Password is required'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 export const LoginScreen: React.FC = () => {
@@ -25,8 +25,8 @@ export const LoginScreen: React.FC = () => {
   const [errors, setErrors] = useState<{email?: string; password?: string}>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const handleChange = (key: 'email' | 'password', value: string) => {
-    setForm(prev => ({...prev, [key]: value}));
+  const handleChange = (field: 'email' | 'password', value: string) => {
+    setForm(prev => ({...prev, [field]: value}));
   };
 
   const handleSubmit = async () => {
@@ -34,15 +34,15 @@ export const LoginScreen: React.FC = () => {
     try {
       schema.parse(form);
       setErrors({});
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        const zodErrors: typeof errors = {};
-        err.errors.forEach(issue => {
+    } catch (validationError) {
+      if (validationError instanceof z.ZodError) {
+        const nextErrors: typeof errors = {};
+        validationError.errors.forEach(issue => {
           if (issue.path[0]) {
-            zodErrors[issue.path[0] as 'email' | 'password'] = issue.message;
+            nextErrors[issue.path[0] as 'email' | 'password'] = issue.message;
           }
         });
-        setErrors(zodErrors);
+        setErrors(nextErrors);
       }
       return;
     }
@@ -56,7 +56,7 @@ export const LoginScreen: React.FC = () => {
     <KeyboardAvoidingView
       style={[styles.container, {backgroundColor: theme.colors.background}]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.content}> 
+      <View style={styles.content}>
         <Text style={[styles.title, {color: theme.colors.primary}]}>Lobbybox Guard</Text>
         <TextInput
           placeholder="Email"
@@ -75,7 +75,7 @@ export const LoginScreen: React.FC = () => {
           accessibilityLabel="Email address"
           accessibilityHint="Enter your email address"
         />
-        {errors.email ? <Text style={[styles.error, {color: 'red'}]}>{errors.email}</Text> : null}
+        {errors.email ? <Text style={[styles.error, {color: theme.colors.notification}]}>{errors.email}</Text> : null}
         <TextInput
           placeholder="Password"
           placeholderTextColor={theme.colors.muted}
@@ -92,7 +92,9 @@ export const LoginScreen: React.FC = () => {
           accessibilityLabel="Password"
           accessibilityHint="Enter your account password"
         />
-        {errors.password ? <Text style={[styles.error, {color: 'red'}]}>{errors.password}</Text> : null}
+        {errors.password ? (
+          <Text style={[styles.error, {color: theme.colors.notification}]}>{errors.password}</Text>
+        ) : null}
         {error ? <ErrorNotice error={error} variant="inline" style={styles.inlineError} /> : null}
         <TouchableOpacity
           disabled={submitting}
@@ -101,7 +103,9 @@ export const LoginScreen: React.FC = () => {
           accessibilityRole="button"
           accessibilityLabel={submitting ? 'Signing in' : 'Login'}
           accessibilityHint="Authenticates your account">
-          <Text style={[styles.buttonLabel, {color: theme.colors.background}]}>{submitting ? 'Signing in…' : 'Login'}</Text>
+          <Text style={[styles.buttonLabel, {color: theme.colors.background}]}>
+            {submitting ? 'Signing in…' : 'Login'}
+          </Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

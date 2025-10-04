@@ -1,15 +1,12 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {StatusBar} from 'react-native';
+import {StatusBar} from 'expo-status-bar';
 import {LoginScreen} from '@/screens/Auth/LoginScreen';
-import {CaptureScreen} from '@/screens/App/CaptureScreen';
-import {TodayScreen} from '@/screens/App/TodayScreen';
-import {HistoryScreen} from '@/screens/App/HistoryScreen';
-import {ProfileScreen} from '@/screens/App/ProfileScreen';
-import {GuardRestrictionScreen} from '@/screens/App/GuardRestrictionScreen';
-import {useAuth} from '@/hooks/useAuth';
+import {HomeScreen} from '@/screens/App/HomeScreen';
+import {SettingsScreen} from '@/screens/App/SettingsScreen';
+import {NotPermittedScreen} from '@/screens/Auth/NotPermittedScreen';
+import {useAuth} from '@/context/AuthContext';
 import {SplashScreen} from '@/components/SplashScreen';
 import {useThemeContext} from '@/theme';
 
@@ -17,19 +14,17 @@ export type AuthStackParamList = {
   Login: undefined;
 };
 
-export type AppTabParamList = {
-  Capture: undefined;
-  Today: undefined;
-  History: undefined;
-  Profile: undefined;
+export type AppStackParamList = {
+  Home: undefined;
+  Settings: undefined;
 };
 
 export type RestrictedStackParamList = {
-  Restricted: undefined;
+  NotPermitted: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
-const Tab = createBottomTabNavigator<AppTabParamList>();
+const AppStack = createNativeStackNavigator<AppStackParamList>();
 const RestrictedStack = createNativeStackNavigator<RestrictedStackParamList>();
 
 const AuthNavigator = () => (
@@ -38,28 +33,24 @@ const AuthNavigator = () => (
   </AuthStack.Navigator>
 );
 
-const AppTabs = () => {
-  const {theme} = useThemeContext();
+const AppStackNavigator: React.FC = () => {
+  const {user} = useAuth();
+  const greeting = useMemo(() => {
+    const displayName = user?.displayName ?? user?.fullName ?? user?.email;
+    return displayName ? `Welcome, ${displayName}` : 'Home';
+  }, [user]);
+
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerStyle: {backgroundColor: theme.colors.card},
-        headerTintColor: theme.colors.text,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.muted,
-        tabBarStyle: {backgroundColor: theme.colors.card},
-      }}>
-      <Tab.Screen name="Capture" component={CaptureScreen} />
-      <Tab.Screen name="Today" component={TodayScreen} />
-      <Tab.Screen name="History" component={HistoryScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
+    <AppStack.Navigator>
+      <AppStack.Screen name="Home" component={HomeScreen} options={{title: greeting}} />
+      <AppStack.Screen name="Settings" component={SettingsScreen} options={{title: 'Settings'}} />
+    </AppStack.Navigator>
   );
 };
 
-const GuardRestrictionNavigator = () => (
+const RestrictedNavigator = () => (
   <RestrictedStack.Navigator screenOptions={{headerShown: false}}>
-    <RestrictedStack.Screen name="Restricted" component={GuardRestrictionScreen} />
+    <RestrictedStack.Screen name="NotPermitted" component={NotPermittedScreen} />
   </RestrictedStack.Navigator>
 );
 
@@ -71,12 +62,13 @@ export const AppNavigator: React.FC = () => {
     return <SplashScreen />;
   }
 
+  const isAuthenticated = status === 'authenticated';
   const isGuard = user?.role === 'GUARD';
 
   return (
     <NavigationContainer theme={theme}>
-      <StatusBar barStyle={mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.card} />
-      {status !== 'authenticated' ? <AuthNavigator /> : isGuard ? <AppTabs /> : <GuardRestrictionNavigator />}
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} backgroundColor={theme.colors.card} />
+      {!isAuthenticated ? <AuthNavigator /> : isGuard ? <AppStackNavigator /> : <RestrictedNavigator />}
     </NavigationContainer>
   );
 };

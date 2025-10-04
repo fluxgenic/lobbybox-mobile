@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Keychain from 'react-native-keychain';
+import * as SecureStore from 'expo-secure-store';
 
 const ACCESS_TOKEN_KEY = 'lobbybox_guard_access_token';
-const REFRESH_TOKEN_SERVICE = 'lobbybox_guard_refresh_token';
+const REFRESH_TOKEN_KEY = 'lobbybox_guard_refresh_token';
 
 let inMemoryAccessToken: string | null = null;
 
@@ -24,9 +24,8 @@ export const tokenStorage = {
   setTokens: async ({accessToken, refreshToken}: AuthTokens): Promise<void> => {
     inMemoryAccessToken = accessToken;
     await AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    await Keychain.setGenericPassword('refreshToken', refreshToken, {
-      service: REFRESH_TOKEN_SERVICE,
-      accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED,
+    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED,
     });
   },
   setAccessToken: async (accessToken: string): Promise<void> => {
@@ -34,17 +33,12 @@ export const tokenStorage = {
     await AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   },
   getRefreshToken: async (): Promise<string | null> => {
-    const credentials = await Keychain.getGenericPassword({
-      service: REFRESH_TOKEN_SERVICE,
-    });
-    if (!credentials) {
-      return null;
-    }
-    return credentials.password;
+    const token = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    return token ?? null;
   },
   clear: async (): Promise<void> => {
     inMemoryAccessToken = null;
     await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
-    await Keychain.resetGenericPassword({service: REFRESH_TOKEN_SERVICE});
+    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
   },
 };
