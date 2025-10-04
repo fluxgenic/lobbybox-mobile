@@ -9,6 +9,7 @@ package-lock.json
 web-build
 **/*.log
 *.expo
+assets/icon.png
 .env.local
 .env.development.local
 .env.production.local

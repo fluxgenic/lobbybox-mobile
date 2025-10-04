@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "generate:expo-icon": "node scripts/generate-expo-icon.cjs",
+    "prepare": "npm run generate:expo-icon",
+    "prestart": "npm run generate:expo-icon",
+    "preandroid": "npm run generate:expo-icon",
+    "preios": "npm run generate:expo-icon",
+    "preweb": "npm run generate:expo-icon",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -33,6 +39,7 @@
     "@types/react-native": "~0.73.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
+    "babel-plugin-module-resolver": "^5.0.0",
     "dotenv": "^16.4.5",
     "eslint": "^8.56.0",
     "typescript": "^5.3.3"
