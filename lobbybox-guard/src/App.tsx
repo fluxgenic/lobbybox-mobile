@@ -6,6 +6,7 @@ import {ThemeProvider} from '@/theme';
 import {AuthProvider} from '@/context/AuthContext';
 import {AppNavigator} from '@/navigation/AppNavigator';
 import {DebugProvider} from '@/debug/DebugContext';
+import {ToastHost} from '@/components/ToastHost';
 
 enableScreens();
 
@@ -14,6 +15,7 @@ const App: React.FC = () => {
     <GestureHandlerRootView style={{flex: 1}}>
       <SafeAreaProvider>
         <ThemeProvider>
+          <ToastHost />
           <DebugProvider>
             <AuthProvider>
               <AppNavigator />
