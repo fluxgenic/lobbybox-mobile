@@ -4,6 +4,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {StatusBar} from 'expo-status-bar';
 import {StyleSheet, Text, View} from 'react-native';
+import {Ionicons} from '@expo/vector-icons';
 import {LoginScreen} from '@/screens/Auth/LoginScreen';
 import {HomeScreen} from '@/screens/App/HomeScreen';
 import {SettingsScreen} from '@/screens/App/SettingsScreen';
@@ -76,13 +77,17 @@ const AppTabsNavigator: React.FC = () => {
 
   return (
     <AppTabs.Navigator
-      screenOptions={{
+      screenOptions={({route}) => ({
         headerStyle: {backgroundColor: theme.colors.card},
         headerTintColor: theme.roles.text.primary,
         tabBarActiveTintColor: theme.palette.primary.main,
         tabBarInactiveTintColor: theme.roles.text.secondary,
         tabBarStyle: {backgroundColor: theme.colors.card, borderTopColor: theme.roles.card.border},
-      }}
+        tabBarIcon: ({color, size, focused}) => {
+          const iconName = getTabIconName(route.name, focused);
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+      })}
     >
       <AppTabs.Screen name="Capture" component={CaptureScreen} />
       <AppTabs.Screen name="Today" component={HomeScreen} options={{headerTitle}} />
@@ -97,6 +102,21 @@ const RestrictedNavigator = () => (
     <RestrictedStack.Screen name="NotPermitted" component={NotPermittedScreen} />
   </RestrictedStack.Navigator>
 );
+
+const getTabIconName = (routeName: keyof AppTabsParamList, focused: boolean): keyof typeof Ionicons.glyphMap => {
+  switch (routeName) {
+    case 'Capture':
+      return focused ? 'camera' : 'camera-outline';
+    case 'Today':
+      return focused ? 'home' : 'home-outline';
+    case 'History':
+      return focused ? 'time' : 'time-outline';
+    case 'Profile':
+      return focused ? 'person' : 'person-outline';
+    default:
+      return 'ellipse-outline';
+  }
+};
 
 export const AppNavigator: React.FC = () => {
   const {status, user} = useAuth();
