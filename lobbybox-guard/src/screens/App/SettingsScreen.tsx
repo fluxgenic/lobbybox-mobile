@@ -1,15 +1,42 @@
-import React from 'react';
+import React, {useCallback} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import Constants from 'expo-constants';
 import {ScreenContainer} from '@/components/ScreenContainer';
 import {Button} from '@/components/Button';
 import {useAuth} from '@/context/AuthContext';
 import {useThemeContext} from '@/theme';
 import {FEATURE_FLAGS} from '@/config/env';
 import {DebugPanel} from '@/components/DebugPanel';
+import {useDebug} from '@/debug/DebugContext';
+import {showToast} from '@/utils/toast';
 
 export const SettingsScreen: React.FC = () => {
   const {user, logout} = useAuth();
   const {theme} = useThemeContext();
+  const {lastRequestId} = useDebug();
+
+  const handleSignOut = useCallback(() => {
+    logout();
+  }, [logout]);
+
+  const handleCopyDiagnostics = useCallback(async () => {
+    const version =
+      Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? Constants.expoVersion ?? 'unknown';
+    const build =
+      Constants.expoConfig?.runtimeVersion ?? Constants.nativeBuildVersion ?? Constants.nativeAppVersion ?? 'unknown';
+
+    const diagnostics = [`App version: ${version}`, `Build: ${build}`, `Last request ID: ${lastRequestId ?? 'N/A'}`].join(
+      '\n',
+    );
+
+    try {
+      await Clipboard.setStringAsync(diagnostics);
+      showToast('Diagnostics copied', {type: 'success'});
+    } catch (error) {
+      showToast('Unable to copy diagnostics', {type: 'error'});
+    }
+  }, [lastRequestId]);
 
   return (
     <ScreenContainer>
@@ -28,7 +55,15 @@ export const SettingsScreen: React.FC = () => {
           <Text style={[styles.value, {color: theme.roles.text.primary}]}>{user?.role ?? '—'}</Text>
         </View>
       </View>
-      <Button title="Sign out" onPress={logout} accessibilityLabel="Sign out" style={styles.signOut} />
+      <View style={styles.actions}>
+        <Button
+          title="Copy diagnostics"
+          onPress={handleCopyDiagnostics}
+          variant="secondary"
+          accessibilityLabel="Copy diagnostics to clipboard"
+        />
+        <Button title="Sign out" onPress={handleSignOut} accessibilityLabel="Sign out" style={styles.signOut} />
+      </View>
       {FEATURE_FLAGS.SHOW_DEBUG_PANEL ? <DebugPanel /> : null}
     </ScreenContainer>
   );
@@ -55,7 +90,10 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 16,
   },
-  signOut: {
+  actions: {
     marginTop: 8,
+  },
+  signOut: {
+    marginTop: 12,
   },
 });
