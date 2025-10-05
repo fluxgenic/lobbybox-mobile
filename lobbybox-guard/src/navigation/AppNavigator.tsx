@@ -1,11 +1,14 @@
 import React, {useMemo} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {StatusBar} from 'expo-status-bar';
 import {StyleSheet, Text, View} from 'react-native';
 import {LoginScreen} from '@/screens/Auth/LoginScreen';
 import {HomeScreen} from '@/screens/App/HomeScreen';
 import {SettingsScreen} from '@/screens/App/SettingsScreen';
+import {CaptureScreen} from '@/screens/App/CaptureScreen';
+import {HistoryScreen} from '@/screens/App/HistoryScreen';
 import {NotPermittedScreen} from '@/screens/Auth/NotPermittedScreen';
 import {useAuth} from '@/context/AuthContext';
 import {SplashScreen} from '@/components/SplashScreen';
@@ -15,9 +18,11 @@ export type AuthStackParamList = {
   Login: undefined;
 };
 
-export type AppStackParamList = {
-  Home: undefined;
-  Settings: undefined;
+export type AppTabsParamList = {
+  Capture: undefined;
+  Today: undefined;
+  History: undefined;
+  Profile: undefined;
 };
 
 export type RestrictedStackParamList = {
@@ -25,7 +30,7 @@ export type RestrictedStackParamList = {
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
-const AppStack = createNativeStackNavigator<AppStackParamList>();
+const AppTabs = createBottomTabNavigator<AppTabsParamList>();
 const RestrictedStack = createNativeStackNavigator<RestrictedStackParamList>();
 
 const AuthNavigator = () => (
@@ -50,7 +55,7 @@ const PropertyHeaderTitle: React.FC<{title: string; subtitle?: string | null}> =
   );
 };
 
-const AppStackNavigator: React.FC = () => {
+const AppTabsNavigator: React.FC = () => {
   const {user} = useAuth();
   const propertyName = user?.property?.name?.trim();
   const propertyCode = user?.property?.code?.trim();
@@ -67,11 +72,23 @@ const AppStackNavigator: React.FC = () => {
     [greeting, propertyCode, propertyName],
   );
 
+  const {theme} = useThemeContext();
+
   return (
-    <AppStack.Navigator>
-      <AppStack.Screen name="Home" component={HomeScreen} options={{headerTitle}} />
-      <AppStack.Screen name="Settings" component={SettingsScreen} options={{title: 'Settings'}} />
-    </AppStack.Navigator>
+    <AppTabs.Navigator
+      screenOptions={{
+        headerStyle: {backgroundColor: theme.colors.card},
+        headerTintColor: theme.roles.text.primary,
+        tabBarActiveTintColor: theme.palette.primary.main,
+        tabBarInactiveTintColor: theme.roles.text.secondary,
+        tabBarStyle: {backgroundColor: theme.colors.card, borderTopColor: theme.roles.card.border},
+      }}
+    >
+      <AppTabs.Screen name="Capture" component={CaptureScreen} />
+      <AppTabs.Screen name="Today" component={HomeScreen} options={{headerTitle}} />
+      <AppTabs.Screen name="History" component={HistoryScreen} />
+      <AppTabs.Screen name="Profile" component={SettingsScreen} options={{title: 'Profile'}} />
+    </AppTabs.Navigator>
   );
 };
 
@@ -95,7 +112,7 @@ export const AppNavigator: React.FC = () => {
   return (
     <NavigationContainer theme={theme}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} backgroundColor={theme.colors.card} />
-      {!isAuthenticated ? <AuthNavigator /> : isGuard ? <AppStackNavigator /> : <RestrictedNavigator />}
+      {!isAuthenticated ? <AuthNavigator /> : isGuard ? <AppTabsNavigator /> : <RestrictedNavigator />}
     </NavigationContainer>
   );
 };

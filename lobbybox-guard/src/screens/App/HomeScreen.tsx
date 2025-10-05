@@ -7,12 +7,10 @@ import {
   Text,
   View,
 } from 'react-native';
-import {useNavigation, useFocusEffect} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {useFocusEffect} from '@react-navigation/native';
 import {ScreenContainer} from '@/components/ScreenContainer';
 import {Button} from '@/components/Button';
 import {useAuth} from '@/context/AuthContext';
-import {AppStackParamList} from '@/navigation/AppNavigator';
 import {useThemeContext} from '@/theme';
 import {useNetworkStatus} from '@/hooks/useNetworkStatus';
 import {fetchDailyParcelMetric} from '@/api/metrics';
@@ -45,7 +43,6 @@ const formatReceivedAt = (receivedAt?: string | null) => {
 };
 
 export const HomeScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const {user, refreshProfile} = useAuth();
   const {theme} = useThemeContext();
   const {isOffline} = useNetworkStatus();
@@ -196,10 +193,6 @@ export const HomeScreen: React.FC = () => {
     fetchDashboardData({showErrors: true});
   }, [fetchDashboardData]);
 
-  const handleOpenSettings = useCallback(() => {
-    navigation.navigate('Settings');
-  }, [navigation]);
-
   const todayLabel = useMemo(
     () => new Date(todayIso).toLocaleDateString(undefined, {weekday: 'long', month: 'long', day: 'numeric'}),
     [todayIso],
@@ -328,12 +321,7 @@ export const HomeScreen: React.FC = () => {
             </View>
           </View>
         </ScrollView>
-        <Button
-          title="Go to Settings"
-          onPress={handleOpenSettings}
-          accessibilityLabel="Open settings"
-          style={styles.settingsButton}
-        />
+        <View style={styles.bottomSpacing} />
       </View>
     </ScreenContainer>
   );
@@ -397,7 +385,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 13,
   },
-  settingsButton: {
+  bottomSpacing: {
     marginTop: 24,
   },
   retryButton: {

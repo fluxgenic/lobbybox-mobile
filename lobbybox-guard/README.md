@@ -43,7 +43,7 @@ Set `EAS_PROJECT_ID` in your shell or CI when triggering builds so that `app.con
 ## App structure
 
 - **Authentication stack** – `LoginScreen` handles credential capture, validation, and error display.
-- **App stack** – `HomeScreen` (placeholder) and `SettingsScreen` (profile summary + sign out).
+- **App tabs** – Capture (scan workflow placeholder), Today (parcel metrics dashboard), History (previous logs placeholder), Profile (settings & sign out).
 - **Role gate** – Non-`GUARD` accounts see the `NotPermittedScreen` with a forced sign-out action.
 - **Token handling** – Access tokens live in AsyncStorage for bootstrap speed; refresh tokens are secured with `expo-secure-store`.
 - **API client** – Axios instance attaches `Authorization` headers, performs a single refresh attempt on 401, and clears the session on failure. Request IDs from error envelopes are forwarded to the debug panel.
@@ -51,7 +51,7 @@ Set `EAS_PROJECT_ID` in your shell or CI when triggering builds so that `app.con
 
 ## Smoke checklist
 
-- ✅ Login with a Guard account → land on Home with the display name in the header.
+- ✅ Login with a Guard account → land on the Today tab with the display name in the header.
 - ✅ Relaunch the app → session persists using stored tokens.
 - ✅ Expire the access token → the client refreshes once and continues the session.
 - ✅ Invalidate the refresh token → the client signs the guard out cleanly.
