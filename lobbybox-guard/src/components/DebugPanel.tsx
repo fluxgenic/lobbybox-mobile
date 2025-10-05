@@ -27,30 +27,37 @@ export const DebugPanel: React.FC = () => {
   }, [loadTokens]);
 
   return (
-    <View style={[styles.container, {borderColor: theme.colors.border, backgroundColor: theme.colors.card}]}
+    <View
+      style={[
+        styles.container,
+        {
+          borderColor: theme.roles.card.border,
+          backgroundColor: theme.roles.card.background,
+        },
+      ]}
       accessible
       accessibilityLabel="Debug information">
       <View style={styles.headerRow}>
-        <Text style={[styles.title, {color: theme.colors.text}]}>Debug panel</Text>
+        <Text style={[styles.title, {color: theme.roles.text.primary}]}>Debug panel</Text>
         <TouchableOpacity onPress={loadTokens} accessibilityRole="button" accessibilityLabel="Reload tokens">
-          <Text style={[styles.action, {color: theme.colors.primary}]}>{loading ? 'Refreshing…' : 'Reload'}</Text>
+          <Text style={[styles.action, {color: theme.palette.primary.main}]}>{loading ? 'Refreshing…' : 'Reload'}</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.item}>
-        <Text style={[styles.label, {color: theme.colors.muted}]}>Last request ID</Text>
-        <Text style={[styles.value, {color: theme.colors.text}]} selectable>
+        <Text style={[styles.label, {color: theme.roles.text.secondary}]}>Last request ID</Text>
+        <Text style={[styles.value, {color: theme.roles.text.primary}]} selectable>
           {lastRequestId ?? '—'}
         </Text>
       </View>
       <View style={styles.item}>
-        <Text style={[styles.label, {color: theme.colors.muted}]}>Access token</Text>
-        <Text style={[styles.value, {color: theme.colors.text}]} selectable numberOfLines={4}>
+        <Text style={[styles.label, {color: theme.roles.text.secondary}]}>Access token</Text>
+        <Text style={[styles.value, {color: theme.roles.text.primary}]} selectable numberOfLines={4}>
           {accessToken ?? '—'}
         </Text>
       </View>
       <View style={styles.item}>
-        <Text style={[styles.label, {color: theme.colors.muted}]}>Refresh token</Text>
-        <Text style={[styles.value, {color: theme.colors.text}]} selectable numberOfLines={4}>
+        <Text style={[styles.label, {color: theme.roles.text.secondary}]}>Refresh token</Text>
+        <Text style={[styles.value, {color: theme.roles.text.primary}]} selectable numberOfLines={4}>
           {refreshToken ?? '—'}
         </Text>
       </View>

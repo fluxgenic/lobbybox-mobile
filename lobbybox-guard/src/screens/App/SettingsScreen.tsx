@@ -14,18 +14,18 @@ export const SettingsScreen: React.FC = () => {
   return (
     <ScreenContainer>
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>Profile</Text>
+        <Text style={[styles.sectionTitle, {color: theme.roles.text.primary}]}>Profile</Text>
         <View style={styles.row}>
-          <Text style={[styles.label, {color: theme.colors.muted}]}>Name</Text>
-          <Text style={[styles.value, {color: theme.colors.text}]}>{user?.displayName ?? '—'}</Text>
+          <Text style={[styles.label, {color: theme.roles.text.secondary}]}>Name</Text>
+          <Text style={[styles.value, {color: theme.roles.text.primary}]}>{user?.displayName ?? '—'}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={[styles.label, {color: theme.colors.muted}]}>Email</Text>
-          <Text style={[styles.value, {color: theme.colors.text}]}>{user?.email ?? '—'}</Text>
+          <Text style={[styles.label, {color: theme.roles.text.secondary}]}>Email</Text>
+          <Text style={[styles.value, {color: theme.roles.text.primary}]}>{user?.email ?? '—'}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={[styles.label, {color: theme.colors.muted}]}>Role</Text>
-          <Text style={[styles.value, {color: theme.colors.text}]}>{user?.role ?? '—'}</Text>
+          <Text style={[styles.label, {color: theme.roles.text.secondary}]}>Role</Text>
+          <Text style={[styles.value, {color: theme.roles.text.primary}]}>{user?.role ?? '—'}</Text>
         </View>
       </View>
       <Button title="Sign out" onPress={logout} accessibilityLabel="Sign out" style={styles.signOut} />

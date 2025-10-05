@@ -13,7 +13,7 @@ export const ScreenContainer: React.FC<Props> = ({children, style}) => {
 
   return (
     <SafeAreaView
-      style={[styles.container, {backgroundColor: theme.colors.background}, style]}
+      style={[styles.container, {backgroundColor: theme.roles.background.default}, style]}
       edges={['top', 'right', 'bottom', 'left']}>
       {children}
     </SafeAreaView>

@@ -11,8 +11,10 @@ export const ProgressBar: React.FC<Props> = ({progress}) => {
   const clamped = Math.min(Math.max(progress, 0), 1);
 
   return (
-    <View style={[styles.track, {backgroundColor: theme.colors.border}]}>
-      <View style={[styles.fill, {width: `${clamped * 100}%`, backgroundColor: theme.colors.primary}]} />
+    <View style={[styles.track, {backgroundColor: theme.roles.divider.color}]}>
+      <View
+        style={[styles.fill, {width: `${clamped * 100}%`, backgroundColor: theme.roles.button.primary.background}]}
+      />
     </View>
   );
 };

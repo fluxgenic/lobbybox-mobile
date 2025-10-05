@@ -12,10 +12,10 @@ export const NotPermittedScreen: React.FC = () => {
   return (
     <ScreenContainer style={styles.container}>
       <View style={styles.content}>
-        <Text style={[styles.title, {color: theme.colors.text}]}>Not permitted</Text>
-        <Text style={[styles.subtitle, {color: theme.colors.muted}]}>This app is only available to Guard accounts.</Text>
+        <Text style={[styles.title, {color: theme.roles.text.primary}]}>Not permitted</Text>
+        <Text style={[styles.subtitle, {color: theme.roles.text.secondary}]}>This app is only available to Guard accounts.</Text>
         {user?.role ? (
-          <Text style={[styles.detail, {color: theme.colors.muted}]}>Current role: {user.role}</Text>
+          <Text style={[styles.detail, {color: theme.roles.text.secondary}]}>Current role: {user.role}</Text>
         ) : null}
       </View>
       <Button title="Sign out" onPress={logout} accessibilityLabel="Sign out" />

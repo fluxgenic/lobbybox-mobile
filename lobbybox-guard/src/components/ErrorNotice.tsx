@@ -1,6 +1,7 @@
 import React, {useMemo, useState} from 'react';
 import {StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle} from 'react-native';
 import {useThemeContext} from '@/theme';
+import type {AppTheme} from '@/theme';
 import {Button} from './Button';
 import {ParsedApiError, getDisplayMessage} from '@/utils/error';
 
@@ -24,7 +25,7 @@ export const ErrorNotice: React.FC<Props> = ({
 
   const isForbidden = error.status === 403;
 
-  const styles = useMemo(() => getStyles(theme.colors, variant), [theme.colors, variant]);
+  const styles = useMemo(() => getStyles(theme, variant), [theme, variant]);
 
   const message = getDisplayMessage(error);
 
@@ -66,15 +67,13 @@ export const ErrorNotice: React.FC<Props> = ({
   );
 };
 
-type ThemeColors = ReturnType<typeof useThemeContext>['theme']['colors'];
-
-const getStyles = (colors: ThemeColors, variant: 'banner' | 'inline') =>
+const getStyles = (theme: AppTheme, variant: 'banner' | 'inline') =>
   StyleSheet.create({
     container: {
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: variant === 'banner' ? colors.card : colors.surface,
+      borderColor: theme.roles.card.border,
+      backgroundColor: variant === 'banner' ? theme.roles.card.background : theme.roles.input.background,
       padding: variant === 'banner' ? 16 : 12,
       marginTop: variant === 'banner' ? 0 : 8,
     },
@@ -86,18 +85,18 @@ const getStyles = (colors: ThemeColors, variant: 'banner' | 'inline') =>
     message: {
       flex: 1,
       marginRight: 12,
-      color: colors.notification,
+      color: theme.roles.status.error,
       fontSize: variant === 'banner' ? 15 : 14,
       fontWeight: '600',
     },
     detailsToggle: {
-      color: colors.primary,
+      color: theme.palette.primary.main,
       fontSize: 14,
       fontWeight: '600',
     },
     detailsText: {
       marginTop: 8,
-      color: colors.muted,
+      color: theme.roles.text.secondary,
       fontSize: 13,
     },
     actionsRow: {

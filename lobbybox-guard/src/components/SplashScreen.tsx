@@ -24,10 +24,10 @@ export const SplashScreen: React.FC = () => {
   }, [opacity, scale]);
 
   return (
-    <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+    <View style={[styles.container, {backgroundColor: theme.roles.background.default}]}>
       <Animated.View style={[styles.logoContainer, {opacity, transform: [{scale}]}]}>
-        <Text style={[styles.logoText, {color: theme.colors.primary}]}>LobbyBox</Text>
-        <Text style={[styles.subtitle, {color: theme.colors.muted}]}>Parcel Guard</Text>
+        <Text style={[styles.logoText, {color: theme.palette.primary.main}]}>LobbyBox</Text>
+        <Text style={[styles.subtitle, {color: theme.roles.text.secondary}]}>Parcel Guard</Text>
       </Animated.View>
     </View>
   );

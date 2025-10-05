@@ -54,17 +54,17 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, {backgroundColor: theme.colors.background}]}
+      style={[styles.container, {backgroundColor: theme.roles.background.default}]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.content}>
-        <Text style={[styles.title, {color: theme.colors.primary}]}>Lobbybox Guard</Text>
+        <Text style={[styles.title, {color: theme.palette.primary.main}]}>Lobbybox Guard</Text>
         <TextInput
           placeholder="Email"
-          placeholderTextColor={theme.colors.muted}
+          placeholderTextColor={theme.roles.input.placeholder}
           value={form.email}
           autoCapitalize="none"
           keyboardType="email-address"
-          style={[styles.input, {borderColor: theme.colors.border, color: theme.colors.text}]}
+          style={[styles.input, {borderColor: theme.roles.input.border, color: theme.roles.input.text}]}
           onChangeText={value => handleChange('email', value)}
           onFocus={() => {
             setErrors(prev => ({...prev, email: undefined}));
@@ -75,13 +75,13 @@ export const LoginScreen: React.FC = () => {
           accessibilityLabel="Email address"
           accessibilityHint="Enter your email address"
         />
-        {errors.email ? <Text style={[styles.error, {color: theme.colors.notification}]}>{errors.email}</Text> : null}
+        {errors.email ? <Text style={[styles.error, {color: theme.roles.status.error}]}>{errors.email}</Text> : null}
         <TextInput
           placeholder="Password"
-          placeholderTextColor={theme.colors.muted}
+          placeholderTextColor={theme.roles.input.placeholder}
           value={form.password}
           secureTextEntry
-          style={[styles.input, {borderColor: theme.colors.border, color: theme.colors.text}]}
+          style={[styles.input, {borderColor: theme.roles.input.border, color: theme.roles.input.text}]}
           onChangeText={value => handleChange('password', value)}
           onFocus={() => {
             setErrors(prev => ({...prev, password: undefined}));
@@ -93,17 +93,20 @@ export const LoginScreen: React.FC = () => {
           accessibilityHint="Enter your account password"
         />
         {errors.password ? (
-          <Text style={[styles.error, {color: theme.colors.notification}]}>{errors.password}</Text>
+          <Text style={[styles.error, {color: theme.roles.status.error}]}>{errors.password}</Text>
         ) : null}
         {error ? <ErrorNotice error={error} variant="inline" style={styles.inlineError} /> : null}
         <TouchableOpacity
           disabled={submitting}
-          style={[styles.button, {backgroundColor: theme.colors.primary, opacity: submitting ? 0.7 : 1}]}
+          style={[
+            styles.button,
+            {backgroundColor: theme.roles.button.primary.background, opacity: submitting ? 0.7 : 1},
+          ]}
           onPress={handleSubmit}
           accessibilityRole="button"
           accessibilityLabel={submitting ? 'Signing in' : 'Login'}
           accessibilityHint="Authenticates your account">
-          <Text style={[styles.buttonLabel, {color: theme.colors.background}]}>
+          <Text style={[styles.buttonLabel, {color: theme.roles.button.primary.text}]}>
             {submitting ? 'Signing in…' : 'Login'}
           </Text>
         </TouchableOpacity>
