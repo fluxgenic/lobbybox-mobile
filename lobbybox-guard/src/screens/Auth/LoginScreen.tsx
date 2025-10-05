@@ -12,6 +12,7 @@ import {z} from 'zod';
 import {useAuth} from '@/context/AuthContext';
 import {useThemeContext} from '@/theme';
 import {ErrorNotice} from '@/components/ErrorNotice';
+import {showToast} from '@/utils/toast';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -41,6 +42,7 @@ export const LoginScreen: React.FC = () => {
           if (issue.path[0]) {
             nextErrors[issue.path[0] as 'email' | 'password'] = issue.message;
           }
+          showToast(issue.message);
         });
         setErrors(nextErrors);
       }
