@@ -16,6 +16,19 @@ declare global {
   var RN$TurboInterop: boolean | undefined;
 }
 
-if (globalThis.RN$TurboInterop !== true) {
-  globalThis.RN$TurboInterop = true;
-}
+type TurboInteropTarget = {
+  RN$TurboInterop?: boolean;
+};
+
+const setTurboInteropFlag = (target: TurboInteropTarget | undefined) => {
+  if (!target) {
+    return;
+  }
+
+  if (target.RN$TurboInterop !== true) {
+    target.RN$TurboInterop = true;
+  }
+};
+
+setTurboInteropFlag(typeof globalThis !== 'undefined' ? (globalThis as TurboInteropTarget) : undefined);
+setTurboInteropFlag(typeof global !== 'undefined' ? (global as TurboInteropTarget) : undefined);
