@@ -23,7 +23,7 @@
     "@react-native-community/netinfo": "^11.4.1",
     "axios": "^1.6.8",
     "expo": "~54.0.0",
-    "expo-clipboard": "^6.0.4",
+    "expo-clipboard": "^6.0.3",
     "expo-constants": "~18.0.9",
     "expo-secure-store": "~15.0.7",
     "expo-status-bar": "~3.0.8",
