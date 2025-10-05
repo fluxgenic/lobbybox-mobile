@@ -16,7 +16,10 @@ import {AppStackParamList} from '@/navigation/AppNavigator';
 import {useThemeContext} from '@/theme';
 import {useNetworkStatus} from '@/hooks/useNetworkStatus';
 import {fetchDailyParcelMetric} from '@/api/metrics';
+import {fetchDailyParcels} from '@/api/parcels';
+import {ParcelSummary} from '@/api/types';
 import {metricsStorage} from '@/storage/metricsStorage';
+import {parcelsStorage} from '@/storage/parcelsStorage';
 import {OfflineBanner} from '@/components/OfflineBanner';
 import {ParsedApiError, parseApiError} from '@/utils/error';
 import {showErrorToast, showToast} from '@/utils/toast';
@@ -25,6 +28,17 @@ const getTodayIsoDate = () => new Date().toISOString().split('T')[0];
 
 const formatUpdatedAt = (date: Date | null) => {
   if (!date) {
+    return '—';
+  }
+  return date.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
+};
+
+const formatReceivedAt = (receivedAt?: string | null) => {
+  if (!receivedAt) {
+    return '—';
+  }
+  const date = new Date(receivedAt);
+  if (Number.isNaN(date.getTime())) {
     return '—';
   }
   return date.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
@@ -43,17 +57,33 @@ export const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<ParsedApiError | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [parcels, setParcels] = useState<ParcelSummary[]>([]);
 
   const propertyId = user?.property?.id ?? null;
 
-  const loadCachedMetric = useCallback(async () => {
-    const cached = await metricsStorage.getDailyParcelMetric(todayIso, propertyId);
-    if (cached) {
-      setDailyCount(cached.count);
-      setLastUpdatedAt(cached.updatedAt ? new Date(cached.updatedAt) : null);
+  const loadCachedData = useCallback(async () => {
+    const [cachedMetric, cachedParcels] = await Promise.all([
+      metricsStorage.getDailyParcelMetric(todayIso, propertyId),
+      parcelsStorage.getDailyParcels(todayIso, propertyId),
+    ]);
+
+    if (cachedMetric) {
+      setDailyCount(cachedMetric.count);
+      setLastUpdatedAt(cachedMetric.updatedAt ? new Date(cachedMetric.updatedAt) : null);
     } else {
       setDailyCount(null);
-      setLastUpdatedAt(null);
+    }
+
+    if (cachedParcels) {
+      setParcels(cachedParcels.parcels);
+      if (!cachedMetric) {
+        setLastUpdatedAt(cachedParcels.updatedAt ? new Date(cachedParcels.updatedAt) : null);
+      }
+    } else {
+      setParcels([]);
+      if (!cachedMetric) {
+        setLastUpdatedAt(null);
+      }
     }
   }, [propertyId, todayIso]);
 
@@ -62,12 +92,13 @@ export const HomeScreen: React.FC = () => {
     setLastUpdatedAt(null);
     setError(null);
     setHasLoadedOnce(false);
+    setParcels([]);
   }, [propertyId, todayIso]);
 
-  const fetchMetric = useCallback(
+  const fetchDashboardData = useCallback(
     async ({suppressLoader, showErrors}: {suppressLoader?: boolean; showErrors?: boolean} = {}) => {
       if (isOffline) {
-        await loadCachedMetric();
+        await loadCachedData();
         if (showErrors) {
           showToast('Offline. Showing the most recent data.', {type: 'info'});
         }
@@ -79,38 +110,50 @@ export const HomeScreen: React.FC = () => {
       }
 
       try {
-        const response = await fetchDailyParcelMetric(todayIso, propertyId);
+        const [metricResponse, parcelResponse] = await Promise.all([
+          fetchDailyParcelMetric(todayIso, propertyId),
+          fetchDailyParcels(todayIso, propertyId),
+        ]);
         const updatedAtIso = new Date().toISOString();
-        setDailyCount(response.count);
+        setDailyCount(metricResponse.count);
         setLastUpdatedAt(new Date(updatedAtIso));
+        setParcels(parcelResponse);
         setError(null);
-        await metricsStorage.setDailyParcelMetric({
-          ...response,
-          propertyId,
-          updatedAt: updatedAtIso,
-        });
+        await Promise.all([
+          metricsStorage.setDailyParcelMetric({
+            ...metricResponse,
+            propertyId,
+            updatedAt: updatedAtIso,
+          }),
+          parcelsStorage.setDailyParcels({
+            date: todayIso,
+            propertyId,
+            updatedAt: updatedAtIso,
+            parcels: parcelResponse,
+          }),
+        ]);
       } catch (err) {
-        const parsed = parseApiError(err, 'Unable to load parcel metrics.');
+        const parsed = parseApiError(err, 'Unable to load parcel data.');
         setError(parsed);
         if (showErrors) {
           showErrorToast(parsed);
         }
-        await loadCachedMetric();
+        await loadCachedData();
       } finally {
         if (!suppressLoader) {
           setLoading(false);
         }
       }
     },
-    [isOffline, loadCachedMetric, propertyId, todayIso],
+    [isOffline, loadCachedData, propertyId, todayIso],
   );
 
   useEffect(() => {
     let isActive = true;
     const bootstrap = async () => {
       setLoading(true);
-      await loadCachedMetric();
-      await fetchMetric({suppressLoader: true});
+      await loadCachedData();
+      await fetchDashboardData({suppressLoader: true});
       if (isActive) {
         setLoading(false);
         setHasLoadedOnce(true);
@@ -120,13 +163,13 @@ export const HomeScreen: React.FC = () => {
     return () => {
       isActive = false;
     };
-  }, [fetchMetric, loadCachedMetric, propertyId, todayIso]);
+  }, [fetchDashboardData, loadCachedData, propertyId, todayIso]);
 
   useEffect(() => {
     if (!isOffline && hasLoadedOnce) {
-      fetchMetric();
+      fetchDashboardData();
     }
-  }, [fetchMetric, hasLoadedOnce, isOffline]);
+  }, [fetchDashboardData, hasLoadedOnce, isOffline]);
 
   useEffect(() => {
     if (isOffline) {
@@ -139,19 +182,19 @@ export const HomeScreen: React.FC = () => {
       if (!hasLoadedOnce) {
         return;
       }
-      fetchMetric({suppressLoader: true});
-    }, [fetchMetric, hasLoadedOnce]),
+      fetchDashboardData({suppressLoader: true});
+    }, [fetchDashboardData, hasLoadedOnce]),
   );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.allSettled([refreshProfile(), fetchMetric({suppressLoader: true, showErrors: true})]);
+    await Promise.allSettled([refreshProfile(), fetchDashboardData({suppressLoader: true, showErrors: true})]);
     setRefreshing(false);
-  }, [fetchMetric, refreshProfile]);
+  }, [fetchDashboardData, refreshProfile]);
 
   const handleRetry = useCallback(() => {
-    fetchMetric({showErrors: true});
-  }, [fetchMetric]);
+    fetchDashboardData({showErrors: true});
+  }, [fetchDashboardData]);
 
   const handleOpenSettings = useCallback(() => {
     navigation.navigate('Settings');
@@ -220,6 +263,69 @@ export const HomeScreen: React.FC = () => {
                 style={styles.retryButton}
               />
             ) : null}
+            <View
+              style={[
+                styles.parcelCard,
+                {
+                  backgroundColor: theme.roles.card.background,
+                  borderColor: theme.roles.card.border,
+                },
+              ]}>
+              <Text style={[styles.parcelCardTitle, {color: theme.roles.text.primary}]}>Today's parcels</Text>
+              {loading ? (
+                <View style={styles.parcelLoadingWrapper}>
+                  <ActivityIndicator color={theme.palette.primary.main} accessibilityLabel="Loading parcel details" />
+                </View>
+              ) : parcels.length === 0 ? (
+                <Text style={[styles.parcelEmptyText, {color: theme.roles.text.secondary}]}>No parcels logged yet today.</Text>
+              ) : (
+                <View style={styles.parcelList}>
+                  {parcels.map((parcel, index) => {
+                    const metaItems = [
+                      parcel.unit ? `Unit ${parcel.unit}` : null,
+                      parcel.carrier ?? null,
+                      `Received ${formatReceivedAt(parcel.receivedAt)}`,
+                    ].filter((item): item is string => Boolean(item));
+
+                    return (
+                      <View
+                        key={parcel.id}
+                        style={[
+                          styles.parcelItem,
+                          index > 0 ? styles.parcelItemSpacing : null,
+                          {
+                            backgroundColor:
+                              theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                            borderColor: theme.roles.card.border,
+                          },
+                        ]}>
+                        <View style={styles.parcelItemHeader}>
+                          <Text style={[styles.parcelRecipient, {color: theme.roles.text.primary}]} numberOfLines={1}>
+                            {parcel.recipient}
+                          </Text>
+                          {parcel.status ? (
+                            <Text style={[styles.parcelStatus, {color: theme.roles.text.secondary}]} numberOfLines={1}>
+                              {parcel.status}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <View style={styles.parcelItemMeta}>
+                          {metaItems.map((item, metaIndex) => (
+                            <Text
+                              key={`${parcel.id}_meta_${metaIndex}`}
+                              style={[styles.parcelMetaText, {color: theme.roles.text.secondary}]}
+                            >
+                              {metaIndex > 0 ? '• ' : ''}
+                              {item}
+                            </Text>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
           </View>
         </ScrollView>
         <Button
@@ -244,6 +350,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   metricCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 20,
+  },
+  parcelCard: {
+    marginTop: 20,
     borderWidth: 1,
     borderRadius: 16,
     padding: 20,
@@ -290,5 +402,54 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 16,
+  },
+  parcelCardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  parcelLoadingWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  parcelEmptyText: {
+    fontSize: 14,
+  },
+  parcelList: {
+    marginTop: 4,
+  },
+  parcelItem: {
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+  },
+  parcelItemSpacing: {
+    marginTop: 12,
+  },
+  parcelItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  parcelRecipient: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 12,
+  },
+  parcelStatus: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+  },
+  parcelItemMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  parcelMetaText: {
+    fontSize: 13,
+    marginRight: 12,
+    marginBottom: 4,
   },
 });

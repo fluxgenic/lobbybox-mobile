@@ -21,6 +21,15 @@ export type DailyParcelMetric = {
   propertyId?: string | null;
 };
 
+export type ParcelSummary = {
+  id: string;
+  recipient: string;
+  unit?: string | null;
+  carrier?: string | null;
+  status?: string | null;
+  receivedAt?: string | null;
+};
+
 export type AuthResponse = {
   accessToken: string;
   refreshToken: string;
