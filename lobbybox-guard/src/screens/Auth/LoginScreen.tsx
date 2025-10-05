@@ -57,7 +57,7 @@ export const LoginScreen: React.FC = () => {
       style={[styles.container, {backgroundColor: theme.roles.background.default}]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.content}>
-        <Text style={[styles.title, {color: theme.palette.primary.main}]}>Lobbybox Guard</Text>
+        <Text style={[styles.title, {color: theme.colors.primary}]}>LobbyBox</Text>
         <TextInput
           placeholder="Email"
           placeholderTextColor={theme.roles.input.placeholder}
