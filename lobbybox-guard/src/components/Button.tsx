@@ -1,6 +1,7 @@
 import React from 'react';
 import {StyleProp, StyleSheet, Text, TouchableOpacity, TouchableOpacityProps, ViewStyle} from 'react-native';
 import {useThemeContext} from '@/theme';
+import type {ThemeRoles} from '@/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
@@ -21,7 +22,7 @@ export const Button: React.FC<Props> = ({
   ...rest
 }) => {
   const {theme} = useThemeContext();
-  const styles = getStyles(theme.colors, disabled ?? false);
+  const styles = getStyles(theme.roles, disabled ?? false);
 
   const containerStyle = [styles.base, styles[variant], style];
   const textStyle = [styles.text, styles[`${variant}Text` as const]];
@@ -40,9 +41,7 @@ export const Button: React.FC<Props> = ({
   );
 };
 
-type ThemeColors = ReturnType<typeof useThemeContext>['theme']['colors'];
-
-const getStyles = (colors: ThemeColors, disabled: boolean) =>
+const getStyles = (roles: ThemeRoles, disabled: boolean) =>
   StyleSheet.create({
     base: {
       paddingVertical: 12,
@@ -58,23 +57,23 @@ const getStyles = (colors: ThemeColors, disabled: boolean) =>
       fontWeight: '600',
     },
     primary: {
-      backgroundColor: colors.primary,
+      backgroundColor: roles.button.primary.background,
     },
     primaryText: {
-      color: colors.background,
+      color: roles.button.primary.text,
     },
     secondary: {
-      backgroundColor: colors.surface,
+      backgroundColor: roles.button.secondary.background,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: roles.button.secondary.border,
     },
     secondaryText: {
-      color: colors.text,
+      color: roles.button.secondary.text,
     },
     ghost: {
       backgroundColor: 'transparent',
     },
     ghostText: {
-      color: colors.primary,
+      color: roles.button.ghost.text,
     },
   });

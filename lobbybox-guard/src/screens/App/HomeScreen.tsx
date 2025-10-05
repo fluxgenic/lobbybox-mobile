@@ -16,8 +16,8 @@ export const HomeScreen: React.FC = () => {
   return (
     <ScreenContainer>
       <View style={styles.content}>
-        <Text style={[styles.greeting, {color: theme.colors.text}]}>You are signed in.</Text>
-        <Text style={[styles.meta, {color: theme.colors.muted}]}>Role: {user?.role ?? 'Unknown'}</Text>
+        <Text style={[styles.greeting, {color: theme.roles.text.primary}]}>You are signed in.</Text>
+        <Text style={[styles.meta, {color: theme.roles.text.secondary}]}>Role: {user?.role ?? 'Unknown'}</Text>
       </View>
       <Button
         title="Go to Settings"

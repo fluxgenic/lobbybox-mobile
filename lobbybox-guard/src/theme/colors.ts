@@ -1,21 +1,49 @@
-export const corporateLightPalette = {
-  primary: '#d97706',
-  primaryVariant: '#b45309',
-  secondary: '#4338ca',
-  background: '#fefce8',
-  surface: '#ffffff',
-  text: '#1f2937',
-  muted: '#6b7280',
-  border: '#e5e7eb',
-};
+export const colorTokens = {
+  color: {
+    primary: {
+      main: '#FFD956',
+      dark: '#E0B500',
+      contrastText: '#2C2C2C',
+    },
+    secondary: {
+      main: '#2C2C2C',
+      contrastText: '#FFFFFF',
+    },
+    background: {
+      default: '#FAFAFA',
+    },
+    surface: {
+      card: '#FFFFFF',
+    },
+    info: {
+      main: '#4DA6FF',
+    },
+    success: {
+      main: '#3BC97E',
+    },
+    error: {
+      main: '#E85D5D',
+    },
+    border: {
+      divider: '#E0E0E0',
+    },
+    text: {
+      primary: '#2C2C2C',
+      secondary: '#666666',
+    },
+    dark: {
+      background: {
+        default: '#1A1A1A',
+      },
+      surface: {
+        card: '#2C2C2C',
+      },
+      text: {
+        primary: '#FFFFFF',
+        secondary: '#CCCCCC',
+      },
+    },
+  },
+} as const;
 
-export const corporateDarkPalette = {
-  primary: '#f59e0b',
-  primaryVariant: '#f97316',
-  secondary: '#6366f1',
-  background: '#0f172a',
-  surface: '#111827',
-  text: '#f9fafb',
-  muted: '#9ca3af',
-  border: '#1f2937',
-};
+export type ColorTokens = typeof colorTokens;
