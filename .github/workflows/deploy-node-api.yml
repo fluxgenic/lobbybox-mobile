@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "18.x"
-  APP_DIRECTORY: "."
+  NODE_VERSION: "22.x"
+  APP_DIRECTORY: "lobbybox-guard"
 
 jobs:
   build-and-deploy:
@@ -38,6 +38,7 @@ jobs:
           cache-dependency-path: |
             ${{ env.APP_DIRECTORY }}/package-lock.json
             ${{ env.APP_DIRECTORY }}/npm-shrinkwrap.json
+            ${{ env.APP_DIRECTORY }}/package.json
 
       - name: Install dependencies
         run: |
@@ -62,13 +63,13 @@ jobs:
 
       - name: Copy deployment package
         run: |
-          mkdir -p ../build-artifact
+          mkdir -p build-artifact
           if [ -d dist ]; then
-            cp -R dist/. ../build-artifact/
+            cp -R dist/. build-artifact/
           elif [ -d build ]; then
-            cp -R build/. ../build-artifact/
+            cp -R build/. build-artifact/
           else
-            rsync -av --exclude=node_modules --exclude=.next --exclude=.git ./ ../build-artifact/
+            rsync -av --exclude=node_modules --exclude=.next --exclude=.git ./ build-artifact/
           fi
 
       - name: Deploy to Azure Web App
