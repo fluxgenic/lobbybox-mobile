@@ -13,7 +13,8 @@ import {
   View,
 } from 'react-native';
 import {CameraView, CameraViewRef, useCameraPermissions} from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
+import {createUploadTask, FileSystemUploadType} from 'expo-file-system';
+import {getInfoAsync} from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
@@ -181,7 +182,7 @@ export const CaptureScreen: React.FC = () => {
       }
 
       const resolvedUri = result.uri ?? uri;
-      const info = await FileSystem.getInfoAsync(resolvedUri);
+      const info = await getInfoAsync(resolvedUri);
 
       return {
         uri: resolvedUri,
@@ -236,12 +237,12 @@ export const CaptureScreen: React.FC = () => {
     setUploadProgress(0);
     try {
       const sas = await requestParcelUpload();
-      const uploadTask = FileSystem.createUploadTask(
+      const uploadTask = createUploadTask(
         sas.uploadUrl,
         photo.uri,
         {
           httpMethod: 'PUT',
-          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          uploadType: FileSystemUploadType.BINARY_CONTENT,
           headers: {
             'Content-Type': 'image/jpeg',
           },
