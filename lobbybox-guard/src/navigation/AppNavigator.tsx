@@ -10,6 +10,8 @@ import {HomeScreen} from '@/screens/App/HomeScreen';
 import {SettingsScreen} from '@/screens/App/SettingsScreen';
 import {CaptureScreen} from '@/screens/App/CaptureScreen';
 import {HistoryScreen} from '@/screens/App/HistoryScreen';
+import {ProfileDetailsScreen} from '@/screens/App/ProfileDetailsScreen';
+import {ChangePasswordScreen} from '@/screens/App/ChangePasswordScreen';
 import {NotPermittedScreen} from '@/screens/Auth/NotPermittedScreen';
 import {useAuth} from '@/context/AuthContext';
 import {SplashScreen} from '@/components/SplashScreen';
@@ -26,12 +28,19 @@ export type AppTabsParamList = {
   Profile: undefined;
 };
 
+export type ProfileStackParamList = {
+  Settings: undefined;
+  ProfileDetails: undefined;
+  ChangePassword: undefined;
+};
+
 export type RestrictedStackParamList = {
   NotPermitted: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const AppTabs = createBottomTabNavigator<AppTabsParamList>();
+const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const RestrictedStack = createNativeStackNavigator<RestrictedStackParamList>();
 
 const AuthNavigator = () => (
@@ -53,6 +62,25 @@ const PropertyHeaderTitle: React.FC<{title: string; subtitle?: string | null}> =
         </Text>
       ) : null}
     </View>
+  );
+};
+
+const ProfileNavigator: React.FC = () => {
+  const {theme} = useThemeContext();
+
+  return (
+    <ProfileStack.Navigator
+      screenOptions={{
+        headerStyle: {backgroundColor: theme.colors.card},
+        headerTintColor: theme.roles.text.primary,
+        headerTitleStyle: {color: theme.roles.text.primary},
+        contentStyle: {backgroundColor: theme.roles.background.default},
+      }}
+    >
+      <ProfileStack.Screen name="Settings" component={SettingsScreen} options={{headerShown: false}} />
+      <ProfileStack.Screen name="ProfileDetails" component={ProfileDetailsScreen} options={{title: 'My Profile'}} />
+      <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{title: 'Change Password'}} />
+    </ProfileStack.Navigator>
   );
 };
 
@@ -80,19 +108,20 @@ const AppTabsNavigator: React.FC = () => {
       screenOptions={({route}) => ({
         headerStyle: {backgroundColor: theme.colors.card},
         headerTintColor: theme.roles.text.primary,
-        tabBarActiveTintColor: theme.palette.primary.main,
+        tabBarActiveTintColor: theme.roles.text.primary,
         tabBarInactiveTintColor: theme.roles.text.secondary,
         tabBarStyle: {backgroundColor: theme.colors.card, borderTopColor: theme.roles.card.border},
-        tabBarIcon: ({color, size, focused}) => {
+        tabBarIcon: ({size, focused}) => {
           const iconName = getTabIconName(route.name, focused);
-          return <Ionicons name={iconName} size={size} color={color} />;
+          const iconColor = focused ? theme.palette.primary.main : theme.roles.text.secondary;
+          return <Ionicons name={iconName} size={size} color={iconColor} />;
         },
       })}
     >
       <AppTabs.Screen name="Capture" component={CaptureScreen} />
       <AppTabs.Screen name="Today" component={HomeScreen} options={{headerTitle}} />
       <AppTabs.Screen name="History" component={HistoryScreen} />
-      <AppTabs.Screen name="Profile" component={SettingsScreen} options={{title: 'Profile'}} />
+      <AppTabs.Screen name="Profile" component={ProfileNavigator} options={{headerShown: false}} />
     </AppTabs.Navigator>
   );
 };
