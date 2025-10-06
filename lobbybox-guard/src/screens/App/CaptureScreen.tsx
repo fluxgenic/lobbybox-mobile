@@ -152,15 +152,23 @@ export const CaptureScreen: React.FC = () => {
       const manipulator = ImageManipulator?.manipulateAsync;
       const hasManipulator = typeof manipulator === 'function';
 
-      const result =
-        hasManipulator
-          ? await manipulator(uri, actions, {
-              compress: 0.8,
-              format: ImageManipulator?.SaveFormat?.JPEG ?? 'jpeg',
-            })
-          : {uri};
+      let result: {uri: string; width?: number; height?: number} = {uri};
+      let manipulated = false;
 
-      if (!hasManipulator && actions.length > 0) {
+      if (hasManipulator) {
+        try {
+          result = await manipulator(uri, actions, {
+            compress: 0.8,
+            format: ImageManipulator?.SaveFormat?.JPEG ?? 'jpeg',
+          });
+          manipulated = true;
+        } catch (error) {
+          console.warn(
+            'expo-image-manipulator failed; returning original photo without resizing or compression.',
+            error,
+          );
+        }
+      } else if (actions.length > 0) {
         console.warn('expo-image-manipulator is unavailable; returning original photo without resizing.');
       }
 
@@ -169,8 +177,8 @@ export const CaptureScreen: React.FC = () => {
 
       return {
         uri: resolvedUri,
-        width: result.width ?? (hasManipulator ? targetWidth : resolved.width),
-        height: result.height ?? (hasManipulator ? targetHeight : resolved.height),
+        width: result.width ?? (manipulated ? targetWidth : resolved.width),
+        height: result.height ?? (manipulated ? targetHeight : resolved.height),
         size: info.exists ? info.size : undefined,
       };
     },
