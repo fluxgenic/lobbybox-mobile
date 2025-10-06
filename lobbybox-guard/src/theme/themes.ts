@@ -50,7 +50,9 @@ const createTheme = (mode: ThemeMode): AppTheme => {
     info: colorTokens.color.info,
     success: colorTokens.color.success,
     error: colorTokens.color.error,
-    border: colorTokens.color.border,
+    border: {
+      divider: isDark ? colorTokens.color.dark.border.divider : colorTokens.color.border.divider,
+    },
     text: isDark ? colorTokens.color.dark.text : colorTokens.color.text,
   };
 

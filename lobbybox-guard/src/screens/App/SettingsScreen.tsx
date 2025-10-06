@@ -18,14 +18,30 @@ export const SettingsScreen: React.FC = () => {
   const {lastRequestId} = useDebug();
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
 
+  const getExtraString = useCallback((value: unknown) => {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }, []);
+
   const appVersion = useMemo(() => {
     const version =
-      Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? Constants.expoVersion ?? 'unknown';
+      getExtraString(Constants.expoConfig?.version) ??
+      getExtraString(Constants.expoConfig?.extra?.appVersion as string | undefined) ??
+      getExtraString(Constants.nativeAppVersion) ??
+      getExtraString(Constants.expoVersion) ??
+      'unknown';
     const build =
-      Constants.expoConfig?.runtimeVersion ?? Constants.nativeBuildVersion ?? Constants.nativeAppVersion ?? 'unknown';
+      getExtraString(Constants.expoConfig?.extra?.buildNumber as string | undefined) ??
+      getExtraString(Constants.expoConfig?.runtimeVersion) ??
+      getExtraString(Constants.nativeBuildVersion) ??
+      getExtraString(Constants.nativeAppVersion) ??
+      'unknown';
 
     return `Version ${version} (${build})`;
-  }, []);
+  }, [getExtraString]);
 
   const userName = user?.displayName ?? user?.fullName ?? user?.email ?? 'Guest';
   const initials = useMemo(() => {
@@ -40,15 +56,31 @@ export const SettingsScreen: React.FC = () => {
     return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
   }, [user?.displayName, user?.email, user?.fullName]);
 
+  const propertyDisplay = useMemo(() => {
+    if (!user?.property?.name) {
+      return '—';
+    }
+    const code = user.property.code?.trim();
+    return code ? `${user.property.name} (${code})` : user.property.name;
+  }, [user?.property?.code, user?.property?.name]);
+
   const handleSignOut = useCallback(() => {
     logout();
   }, [logout]);
 
   const handleCopyDiagnostics = useCallback(async () => {
     const version =
-      Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? Constants.expoVersion ?? 'unknown';
+      getExtraString(Constants.expoConfig?.version) ??
+      getExtraString(Constants.expoConfig?.extra?.appVersion as string | undefined) ??
+      getExtraString(Constants.nativeAppVersion) ??
+      getExtraString(Constants.expoVersion) ??
+      'unknown';
     const build =
-      Constants.expoConfig?.runtimeVersion ?? Constants.nativeBuildVersion ?? Constants.nativeAppVersion ?? 'unknown';
+      getExtraString(Constants.expoConfig?.extra?.buildNumber as string | undefined) ??
+      getExtraString(Constants.expoConfig?.runtimeVersion) ??
+      getExtraString(Constants.nativeBuildVersion) ??
+      getExtraString(Constants.nativeAppVersion) ??
+      'unknown';
 
     const diagnostics = [`App version: ${version}`, `Build: ${build}`, `Last request ID: ${lastRequestId ?? 'N/A'}`].join('\n');
 
@@ -58,7 +90,7 @@ export const SettingsScreen: React.FC = () => {
     } catch (error) {
       showToast('Unable to copy diagnostics', {type: 'error'});
     }
-  }, [lastRequestId]);
+  }, [getExtraString, lastRequestId]);
 
   const handleShowProfile = useCallback(() => {
     navigation.navigate('ProfileDetails');
@@ -110,6 +142,9 @@ export const SettingsScreen: React.FC = () => {
               </Text>
               <Text style={[styles.profileSub, {color: theme.roles.text.secondary}]} numberOfLines={1}>
                 {user?.email ?? '—'}
+              </Text>
+              <Text style={[styles.profileMeta, {color: theme.roles.text.secondary}]} numberOfLines={1}>
+                {propertyDisplay}
               </Text>
             </View>
           </Pressable>
@@ -204,6 +239,10 @@ const styles = StyleSheet.create({
   profileSub: {
     fontSize: 14,
     marginTop: 2,
+  },
+  profileMeta: {
+    fontSize: 12,
+    marginTop: 4,
   },
   menu: {
     borderRadius: 16,
