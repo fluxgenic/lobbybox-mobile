@@ -1,6 +1,7 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Linking,
@@ -99,12 +100,43 @@ export const CaptureScreen: React.FC = () => {
   const [lastCreatedParcel, setLastCreatedParcel] = useState<CreateParcelResponse | null>(null);
   const {user} = useAuth();
   const propertyId = user?.property?.id ?? null;
+  const scanningProgress = useRef(new Animated.Value(0)).current;
+  const scanningAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (!permission) {
       requestPermission();
     }
   }, [permission, requestPermission]);
+
+  useEffect(() => {
+    const shouldAnimate = isCapturing || isProcessingPhoto;
+
+    if (shouldAnimate) {
+      scanningProgress.setValue(0);
+      const animation = Animated.loop(
+        Animated.timing(scanningProgress, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      );
+      scanningAnimationRef.current = animation;
+      animation.start();
+    } else if (scanningAnimationRef.current) {
+      scanningAnimationRef.current.stop();
+      scanningAnimationRef.current = null;
+      scanningProgress.setValue(0);
+    }
+
+    return () => {
+      if (scanningAnimationRef.current) {
+        scanningAnimationRef.current.stop();
+        scanningAnimationRef.current = null;
+      }
+      scanningProgress.setValue(0);
+    };
+  }, [isCapturing, isProcessingPhoto, scanningProgress]);
 
   const resetFlow = useCallback(() => {
     setStep('camera');
@@ -361,10 +393,29 @@ export const CaptureScreen: React.FC = () => {
   const renderCameraStep = () => (
     <View style={[styles.cameraWrapper, {paddingTop: insets.top}]}>
       <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" enableShutterSound={false} />
         <View style={styles.cameraOverlay}>
           <Text style={[styles.cameraHint, {color: theme.roles.text.onPrimary}]}>Align the label and tap the shutter</Text>
         </View>
+        {(isCapturing || isProcessingPhoto) && (
+          <View style={styles.scannerOverlay} pointerEvents="none">
+            <Animated.View
+              style={[
+                styles.scannerBar,
+                {
+                  transform: [
+                    {
+                      translateY: scanningProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-160, 160],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          </View>
+        )}
       </View>
       <View style={[styles.cameraControls, {paddingBottom: Math.max(insets.bottom, 24)}]}>
         <TouchableOpacity
@@ -651,6 +702,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 24,
     marginBottom: 24,
+  },
+  scannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  },
+  scannerBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 120,
+    marginHorizontal: 24,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   cameraOverlay: {
     position: 'absolute',
