@@ -5,16 +5,18 @@ import Constants from 'expo-constants';
 import {ScreenContainer} from '@/components/ScreenContainer';
 import {useAuth} from '@/context/AuthContext';
 import {useThemeContext} from '@/theme';
-import {FEATURE_FLAGS} from '@/config/env';
-import {DebugPanel} from '@/components/DebugPanel';
 import {useDebug} from '@/debug/DebugContext';
 import {showToast} from '@/utils/toast';
 import {Ionicons} from '@expo/vector-icons';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {ProfileStackParamList} from '@/navigation/AppNavigator';
 
 export const SettingsScreen: React.FC = () => {
   const {user, logout} = useAuth();
   const {theme, mode, toggleTheme} = useThemeContext();
   const {lastRequestId} = useDebug();
+  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
 
   const appVersion = useMemo(() => {
     const version =
@@ -59,12 +61,12 @@ export const SettingsScreen: React.FC = () => {
   }, [lastRequestId]);
 
   const handleShowProfile = useCallback(() => {
-    Alert.alert('My Profile', `${userName}\n${user?.email ?? ''}\nRole: ${user?.role ?? '—'}`);
-  }, [user?.email, user?.role, userName]);
+    navigation.navigate('ProfileDetails');
+  }, [navigation]);
 
   const handleChangePassword = useCallback(() => {
-    showToast('Change password is not available yet.', {type: 'info'});
-  }, []);
+    navigation.navigate('ChangePassword');
+  }, [navigation]);
 
   const handleAbout = useCallback(() => {
     Alert.alert('About', appVersion, [
@@ -86,10 +88,20 @@ export const SettingsScreen: React.FC = () => {
           bounces={false}
           showsVerticalScrollIndicator={false}
         >
-          <View
-            style={[styles.profileCard, {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border}]}
+          <Pressable
+            style={({pressed}) => [
+              styles.profileCard,
+              {
+                backgroundColor: theme.roles.card.background,
+                borderColor: theme.roles.card.border,
+                opacity: pressed ? 0.96 : 1,
+              },
+            ]}
+            onPress={handleShowProfile}
+            accessibilityRole="button"
+            accessibilityLabel="View profile details"
           >
-            <View style={[styles.avatar, {backgroundColor: theme.palette.primary.main}]}> 
+            <View style={[styles.avatar, {backgroundColor: theme.palette.primary.main}]}>
               <Text style={[styles.avatarText, {color: theme.roles.text.onPrimary}]}>{initials}</Text>
             </View>
             <View>
@@ -100,7 +112,7 @@ export const SettingsScreen: React.FC = () => {
                 {user?.email ?? '—'}
               </Text>
             </View>
-          </View>
+          </Pressable>
 
           <View
             style={[styles.menu, {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border}]}
@@ -148,7 +160,6 @@ export const SettingsScreen: React.FC = () => {
             />
           </View>
 
-          {FEATURE_FLAGS.SHOW_DEBUG_PANEL ? <View style={styles.debugPanelWrapper}><DebugPanel /></View> : null}
         </ScrollView>
         <Text style={[styles.version, {color: theme.roles.text.secondary}]}>{appVersion}</Text>
       </View>
@@ -221,9 +232,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     marginTop: 12,
-  },
-  debugPanelWrapper: {
-    marginBottom: 16,
   },
 });
 
