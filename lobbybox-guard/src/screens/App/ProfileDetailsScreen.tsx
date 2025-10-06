@@ -13,6 +13,28 @@ export const ProfileDetailsScreen: React.FC = () => {
   const {user} = useAuth();
   const {theme} = useThemeContext();
 
+  const userName = user?.displayName ?? user?.fullName ?? user?.email ?? 'Guest';
+  const email = user?.email ?? '—';
+  const propertyDisplay = useMemo(() => {
+    if (!user?.property?.name) {
+      return '—';
+    }
+    const code = user.property.code?.trim();
+    return code ? `${user.property.name} (${code})` : user.property.name;
+  }, [user?.property?.code, user?.property?.name]);
+
+  const initials = useMemo(() => {
+    const source = user?.displayName ?? user?.fullName ?? user?.email ?? '';
+    if (!source) {
+      return 'G';
+    }
+    const parts = source.trim().split(/\s+/);
+    if (parts.length === 1) {
+      return parts[0].charAt(0).toUpperCase();
+    }
+    return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+  }, [user?.displayName, user?.email, user?.fullName]);
+
   const details = useMemo<DetailItem[]>(() => {
     if (!user) {
       return [
@@ -36,6 +58,22 @@ export const ProfileDetailsScreen: React.FC = () => {
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.content} bounces={false} showsVerticalScrollIndicator={false}>
+        <View
+          style={[styles.headerCard, {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border}]}
+        >
+          <View style={[styles.avatar, {backgroundColor: theme.palette.primary.main}]}>
+            <Text style={[styles.avatarText, {color: theme.roles.text.onPrimary}]}>{initials}</Text>
+          </View>
+          <Text style={[styles.headerName, {color: theme.roles.text.primary}]} numberOfLines={1}>
+            {userName}
+          </Text>
+          <Text style={[styles.headerSubtitle, {color: theme.roles.text.secondary}]} numberOfLines={1}>
+            {email}
+          </Text>
+          <Text style={[styles.headerSubtitle, {color: theme.roles.text.secondary}]} numberOfLines={1}>
+            {propertyDisplay}
+          </Text>
+        </View>
         <View
           style={[styles.card, {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border}]}
         >
@@ -67,6 +105,35 @@ const formatRole = (role: string): string => {
 const styles = StyleSheet.create({
   content: {
     padding: 24,
+  },
+  headerCard: {
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: '700',
+  },
+  headerName: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    marginTop: 4,
+    textAlign: 'center',
   },
   card: {
     borderWidth: 1,

@@ -43,6 +43,13 @@ const AppTabs = createBottomTabNavigator<AppTabsParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const RestrictedStack = createNativeStackNavigator<RestrictedStackParamList>();
 
+const TAB_LABELS: Record<keyof AppTabsParamList, string> = {
+  Capture: 'Capture',
+  Today: 'Today',
+  History: 'History',
+  Profile: 'Profile',
+};
+
 const AuthNavigator = () => (
   <AuthStack.Navigator screenOptions={{headerShown: false}}>
     <AuthStack.Screen name="Login" component={LoginScreen} />
@@ -111,6 +118,11 @@ const AppTabsNavigator: React.FC = () => {
         tabBarActiveTintColor: theme.roles.text.primary,
         tabBarInactiveTintColor: theme.roles.text.secondary,
         tabBarStyle: {backgroundColor: theme.colors.card, borderTopColor: theme.roles.card.border},
+        tabBarLabel: ({focused, color}) => (
+          <Text style={[tabStyles.label, {color, fontWeight: focused ? '700' : '500'}]}>
+            {TAB_LABELS[route.name]}
+          </Text>
+        ),
         tabBarIcon: ({size, focused}) => {
           const iconName = getTabIconName(route.name, focused);
           const iconColor = focused ? theme.palette.primary.main : theme.roles.text.secondary;
@@ -177,5 +189,11 @@ const headerStyles = StyleSheet.create({
   subtitle: {
     fontSize: 12,
     marginTop: 2,
+  },
+});
+
+const tabStyles = StyleSheet.create({
+  label: {
+    fontSize: 12,
   },
 });

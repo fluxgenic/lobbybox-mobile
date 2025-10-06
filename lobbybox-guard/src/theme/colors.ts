@@ -38,6 +38,9 @@ export const colorTokens = {
       surface: {
         card: '#2C2C2C',
       },
+      border: {
+        divider: 'rgba(255, 255, 255, 0.16)',
+      },
       text: {
         primary: '#FFFFFF',
         secondary: '#CCCCCC',

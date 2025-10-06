@@ -25,6 +25,13 @@ export default ({config}: ConfigContext): ExpoConfig => {
 
   applyEnvironmentVariables(profile);
 
+  const appVersion = config.version ?? '1.0.0';
+  const buildNumberRaw =
+    process.env.BUILD_NUMBER ?? process.env.EAS_BUILD_ID ?? process.env.ANDROID_VERSION_CODE ?? 'dev';
+  const buildNumberValue = Number(buildNumberRaw);
+  const iosBuildNumber = Number.isNaN(buildNumberValue) ? '1' : String(buildNumberValue);
+  const androidVersionCode = Number.isNaN(buildNumberValue) ? 1 : Math.max(1, Math.floor(buildNumberValue));
+
   const featureFlags = {
     GUARD_HISTORY_LOCAL_ONLY: process.env.GUARD_HISTORY_LOCAL_ONLY ?? 'false',
     SHOW_DEBUG_PANEL: process.env.SHOW_DEBUG_PANEL ?? 'false',
@@ -34,6 +41,8 @@ export default ({config}: ConfigContext): ExpoConfig => {
     appEnv: profile,
     apiBaseUrl: process.env.API_BASE_URL ?? '',
     featureFlags,
+    appVersion,
+    buildNumber: Number.isNaN(buildNumberValue) ? buildNumberRaw : String(buildNumberValue),
   };
 
   if (process.env.EAS_PROJECT_ID) {
@@ -44,7 +53,7 @@ export default ({config}: ConfigContext): ExpoConfig => {
     ...config,
     name: 'Lobbybox Guard',
     slug: 'lobbybox-guard',
-    version: '1.0.0',
+    version: appVersion,
     orientation: 'portrait',
     scheme: 'lobbyboxguard',
     userInterfaceStyle: 'automatic',
@@ -55,11 +64,13 @@ export default ({config}: ConfigContext): ExpoConfig => {
     assetBundlePatterns: ['**/*'],
     ios: {
       supportsTablet: false,
+      buildNumber: iosBuildNumber,
     },
     android: {
       adaptiveIcon: {
         backgroundColor: '#ffffff',
       },
+      versionCode: androidVersionCode,
     },
     web: {
       bundler: 'metro',
