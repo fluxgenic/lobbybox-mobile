@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import {CameraView, CameraViewRef, useCameraPermissions} from 'expo-camera';
-import {createUploadTask, FileSystemUploadType} from 'expo-file-system';
+import {createUploadTask} from 'expo-file-system';
 import {getInfoAsync} from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -300,7 +300,6 @@ export const CaptureScreen: React.FC = () => {
         photo.uri,
         {
           httpMethod: 'PUT',
-          uploadType: FileSystemUploadType.BINARY_CONTENT,
           headers: {
             'Content-Type': 'image/jpeg',
           },
