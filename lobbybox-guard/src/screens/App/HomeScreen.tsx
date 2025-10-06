@@ -1,98 +1,76 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
+  Image,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {ScreenContainer} from '@/components/ScreenContainer';
-import {Button} from '@/components/Button';
-import {useAuth} from '@/context/AuthContext';
 import {useThemeContext} from '@/theme';
+import {useAuth} from '@/context/AuthContext';
 import {useNetworkStatus} from '@/hooks/useNetworkStatus';
-import {fetchDailyParcelMetric} from '@/api/metrics';
-import {fetchDailyParcels} from '@/api/parcels';
-import {ParcelSummary} from '@/api/types';
-import {metricsStorage} from '@/storage/metricsStorage';
+import {fetchParcelsForDate} from '@/api/parcels';
+import {ParcelListItem} from '@/api/types';
 import {parcelsStorage} from '@/storage/parcelsStorage';
 import {OfflineBanner} from '@/components/OfflineBanner';
-import {ParsedApiError, parseApiError} from '@/utils/error';
+import {Button} from '@/components/Button';
+import {parseApiError, ParsedApiError} from '@/utils/error';
 import {showErrorToast, showToast} from '@/utils/toast';
+import {parcelEvents} from '@/events/parcelEvents';
 
 const getTodayIsoDate = () => new Date().toISOString().split('T')[0];
 
-const formatUpdatedAt = (date: Date | null) => {
-  if (!date) {
+const formatTime = (value?: string | null) => {
+  if (!value) {
     return '—';
   }
-  return date.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
-};
-
-const formatReceivedAt = (receivedAt?: string | null) => {
-  if (!receivedAt) {
-    return '—';
-  }
-  const date = new Date(receivedAt);
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return '—';
   }
   return date.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
 };
 
-export const HomeScreen: React.FC = () => {
-  const {user, refreshProfile} = useAuth();
-  const {theme} = useThemeContext();
-  const {isOffline} = useNetworkStatus();
+type PhotoPreviewState = {
+  visible: boolean;
+  uri: string | null;
+  recipient?: string | null;
+  tracking?: string | null;
+};
 
+export const HomeScreen: React.FC = () => {
+  const {theme} = useThemeContext();
+  const {user, refreshProfile} = useAuth();
+  const {isOffline} = useNetworkStatus();
   const todayIso = getTodayIsoDate();
-  const [dailyCount, setDailyCount] = useState<number | null>(null);
+  const propertyId = user?.property?.id ?? null;
+
+  const [parcels, setParcels] = useState<ParcelListItem[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<ParsedApiError | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [parcels, setParcels] = useState<ParcelSummary[]>([]);
-
-  const propertyId = user?.property?.id ?? null;
+  const [photoPreview, setPhotoPreview] = useState<PhotoPreviewState>({visible: false, uri: null});
 
   const loadCachedData = useCallback(async () => {
-    const [cachedMetric, cachedParcels] = await Promise.all([
-      metricsStorage.getDailyParcelMetric(todayIso, propertyId),
-      parcelsStorage.getDailyParcels(todayIso, propertyId),
-    ]);
-
-    if (cachedMetric) {
-      setDailyCount(cachedMetric.count);
-      setLastUpdatedAt(cachedMetric.updatedAt ? new Date(cachedMetric.updatedAt) : null);
-    } else {
-      setDailyCount(null);
-    }
-
-    if (cachedParcels) {
-      setParcels(cachedParcels.parcels);
-      if (!cachedMetric) {
-        setLastUpdatedAt(cachedParcels.updatedAt ? new Date(cachedParcels.updatedAt) : null);
-      }
+    const cached = await parcelsStorage.getDailyParcels(todayIso, propertyId);
+    if (cached) {
+      setParcels(cached.parcels);
+      setLastUpdatedAt(cached.updatedAt ? new Date(cached.updatedAt) : null);
     } else {
       setParcels([]);
-      if (!cachedMetric) {
-        setLastUpdatedAt(null);
-      }
+      setLastUpdatedAt(null);
     }
   }, [propertyId, todayIso]);
 
-  useEffect(() => {
-    setDailyCount(null);
-    setLastUpdatedAt(null);
-    setError(null);
-    setHasLoadedOnce(false);
-    setParcels([]);
-  }, [propertyId, todayIso]);
-
-  const fetchDashboardData = useCallback(
+  const fetchParcels = useCallback(
     async ({suppressLoader, showErrors}: {suppressLoader?: boolean; showErrors?: boolean} = {}) => {
       if (isOffline) {
         await loadCachedData();
@@ -107,30 +85,19 @@ export const HomeScreen: React.FC = () => {
       }
 
       try {
-        const [metricResponse, parcelResponse] = await Promise.all([
-          fetchDailyParcelMetric(todayIso, propertyId),
-          fetchDailyParcels(todayIso, propertyId),
-        ]);
+        const result = await fetchParcelsForDate(todayIso, propertyId);
         const updatedAtIso = new Date().toISOString();
-        setDailyCount(metricResponse.count);
+        setParcels(result);
         setLastUpdatedAt(new Date(updatedAtIso));
-        setParcels(parcelResponse);
         setError(null);
-        await Promise.all([
-          metricsStorage.setDailyParcelMetric({
-            ...metricResponse,
-            propertyId,
-            updatedAt: updatedAtIso,
-          }),
-          parcelsStorage.setDailyParcels({
-            date: todayIso,
-            propertyId,
-            updatedAt: updatedAtIso,
-            parcels: parcelResponse,
-          }),
-        ]);
+        await parcelsStorage.setDailyParcels({
+          date: todayIso,
+          propertyId,
+          updatedAt: updatedAtIso,
+          parcels: result,
+        });
       } catch (err) {
-        const parsed = parseApiError(err, 'Unable to load parcel data.');
+        const parsed = parseApiError(err, 'Unable to load parcels.');
         setError(parsed);
         if (showErrors) {
           showErrorToast(parsed);
@@ -146,52 +113,60 @@ export const HomeScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    let isActive = true;
+    setParcels([]);
+    setLastUpdatedAt(null);
+    setError(null);
+    setHasLoadedOnce(false);
+  }, [propertyId, todayIso]);
+
+  useEffect(() => {
+    let isMounted = true;
     const bootstrap = async () => {
       setLoading(true);
       await loadCachedData();
-      await fetchDashboardData({suppressLoader: true});
-      if (isActive) {
+      await fetchParcels({suppressLoader: true});
+      if (isMounted) {
         setLoading(false);
         setHasLoadedOnce(true);
       }
     };
     bootstrap();
     return () => {
-      isActive = false;
+      isMounted = false;
     };
-  }, [fetchDashboardData, loadCachedData, propertyId, todayIso]);
-
-  useEffect(() => {
-    if (!isOffline && hasLoadedOnce) {
-      fetchDashboardData();
-    }
-  }, [fetchDashboardData, hasLoadedOnce, isOffline]);
-
-  useEffect(() => {
-    if (isOffline) {
-      setError(null);
-    }
-  }, [isOffline]);
+  }, [fetchParcels, loadCachedData]);
 
   useFocusEffect(
     useCallback(() => {
       if (!hasLoadedOnce) {
         return;
       }
-      fetchDashboardData({suppressLoader: true});
-    }, [fetchDashboardData, hasLoadedOnce]),
+      fetchParcels({suppressLoader: true});
+    }, [fetchParcels, hasLoadedOnce]),
   );
+
+  useEffect(() => {
+    if (!isOffline && hasLoadedOnce) {
+      fetchParcels();
+    }
+  }, [fetchParcels, hasLoadedOnce, isOffline]);
+
+  useEffect(() => {
+    const unsubscribe = parcelEvents.subscribe(() => {
+      fetchParcels({suppressLoader: true});
+    });
+    return unsubscribe;
+  }, [fetchParcels]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.allSettled([refreshProfile(), fetchDashboardData({suppressLoader: true, showErrors: true})]);
+    await Promise.allSettled([refreshProfile(), fetchParcels({suppressLoader: true, showErrors: true})]);
     setRefreshing(false);
-  }, [fetchDashboardData, refreshProfile]);
+  }, [fetchParcels, refreshProfile]);
 
   const handleRetry = useCallback(() => {
-    fetchDashboardData({showErrors: true});
-  }, [fetchDashboardData]);
+    fetchParcels({showErrors: true});
+  }, [fetchParcels]);
 
   const todayLabel = useMemo(
     () => new Date(todayIso).toLocaleDateString(undefined, {weekday: 'long', month: 'long', day: 'numeric'}),
@@ -200,6 +175,51 @@ export const HomeScreen: React.FC = () => {
 
   const statusText = isOffline ? 'Offline — showing cached data' : 'Live data';
   const statusColor = isOffline ? theme.roles.status.error : theme.roles.status.success;
+
+  const openPhotoPreview = useCallback((parcel: ParcelListItem) => {
+    setPhotoPreview({
+      visible: true,
+      uri: parcel.photoUrl,
+      recipient: parcel.recipientName,
+      tracking: parcel.trackingNumber,
+    });
+  }, []);
+
+  const closePhotoPreview = useCallback(() => {
+    setPhotoPreview(prev => ({...prev, visible: false}));
+  }, []);
+
+  const renderParcel = (parcel: ParcelListItem, index: number) => {
+    const remarks = parcel.remarks?.trim();
+    const tracking = parcel.trackingNumber?.trim();
+    const recipient = parcel.recipientName?.trim();
+
+    return (
+      <View
+        key={parcel.id}
+        style={[
+          styles.parcelItem,
+          {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border},
+          index > 0 ? styles.parcelSpacing : null,
+        ]}>
+        <View style={styles.parcelHeader}>
+          <Text style={[styles.parcelTime, {color: theme.roles.text.secondary}]}>Collected {formatTime(parcel.collectedAt)}</Text>
+          <TouchableOpacity onPress={() => openPhotoPreview(parcel)} accessibilityRole="button">
+            <Text style={[styles.viewPhoto, {color: theme.palette.primary.main}]}>View photo</Text>
+          </TouchableOpacity>
+        </View>
+        {tracking ? (
+          <Text style={[styles.parcelPrimary, {color: theme.roles.text.primary}]}>Tracking #: {tracking}</Text>
+        ) : null}
+        {recipient ? (
+          <Text style={[styles.parcelPrimary, {color: theme.roles.text.primary}]}>Recipient: {recipient}</Text>
+        ) : null}
+        {remarks ? (
+          <Text style={[styles.parcelRemarks, {color: theme.roles.text.secondary}]}>Remarks: {remarks}</Text>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <ScreenContainer>
@@ -217,112 +237,66 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.content}>
             {isOffline ? <OfflineBanner /> : null}
             <View
-              style={[
-                styles.metricCard,
-                {
-                  backgroundColor: theme.roles.card.background,
-                  borderColor: theme.roles.card.border,
-                },
-              ]}>
-              <View style={styles.metricHeader}>
-                <View>
-                  <Text style={[styles.metricTitle, {color: theme.roles.text.secondary}]}>Today's parcels</Text>
-                  <Text style={[styles.metricSubtitle, {color: theme.roles.text.secondary}]}>{todayLabel}</Text>
-                </View>
-                <View style={styles.metricValueWrapper}>
-                  {loading ? (
-                    <ActivityIndicator color={theme.palette.primary.main} accessibilityLabel="Loading metrics" />
-                  ) : (
-                    <Text style={[styles.metricValue, {color: theme.roles.text.primary}]}>{dailyCount ?? '—'}</Text>
-                  )}
-                </View>
-              </View>
-              <View style={styles.metricFooter}>
-                <Text style={[styles.metricStatus, {color: statusColor}]}>{statusText}</Text>
-                <Text style={[styles.metricUpdated, {color: theme.roles.text.secondary}]}>
-                  Last updated {formatUpdatedAt(lastUpdatedAt)}
-                </Text>
+              style={[styles.summaryCard, {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border}]}
+            >
+              <Text style={[styles.summaryTitle, {color: theme.roles.text.primary}]}>Today's parcels</Text>
+              <Text style={[styles.summarySubtitle, {color: theme.roles.text.secondary}]}>{todayLabel}</Text>
+              <View style={styles.summaryMetaRow}>
+                <Text style={[styles.summaryMeta, {color: statusColor}]}>{statusText}</Text>
+                <Text style={[styles.summaryMeta, {color: theme.roles.text.secondary}]}>Last updated {lastUpdatedAt ? lastUpdatedAt.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '—'}</Text>
               </View>
               {error ? (
-                <Text style={[styles.errorText, {color: theme.roles.status.error}]}>{error.message}</Text>
+                <Text style={[styles.summaryError, {color: theme.roles.status.error}]}>{error.message}</Text>
+              ) : null}
+              <View style={styles.summaryFooter}>
+                <Text style={[styles.summaryCount, {color: theme.roles.text.primary}]}>{parcels.length}</Text>
+                <Text style={[styles.summaryCountLabel, {color: theme.roles.text.secondary}]}>parcels logged today</Text>
+              </View>
+              {error ? (
+                <Button title="Retry" onPress={handleRetry} variant="secondary" style={styles.retryButton} />
               ) : null}
             </View>
-            {error ? (
-              <Button
-                title="Retry"
-                onPress={handleRetry}
-                variant="secondary"
-                accessibilityLabel="Retry loading parcel metrics"
-                style={styles.retryButton}
-              />
-            ) : null}
-            <View
-              style={[
-                styles.parcelCard,
-                {
-                  backgroundColor: theme.roles.card.background,
-                  borderColor: theme.roles.card.border,
-                },
-              ]}>
-              <Text style={[styles.parcelCardTitle, {color: theme.roles.text.primary}]}>Today's parcels</Text>
-              {loading ? (
-                <View style={styles.parcelLoadingWrapper}>
-                  <ActivityIndicator color={theme.palette.primary.main} accessibilityLabel="Loading parcel details" />
-                </View>
-              ) : parcels.length === 0 ? (
-                <Text style={[styles.parcelEmptyText, {color: theme.roles.text.secondary}]}>No parcels logged yet today.</Text>
-              ) : (
-                <View style={styles.parcelList}>
-                  {parcels.map((parcel, index) => {
-                    const metaItems = [
-                      parcel.unit ? `Unit ${parcel.unit}` : null,
-                      parcel.carrier ?? null,
-                      `Received ${formatReceivedAt(parcel.receivedAt)}`,
-                    ].filter((item): item is string => Boolean(item));
-
-                    return (
-                      <View
-                        key={parcel.id}
-                        style={[
-                          styles.parcelItem,
-                          index > 0 ? styles.parcelItemSpacing : null,
-                          {
-                            backgroundColor:
-                              theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-                            borderColor: theme.roles.card.border,
-                          },
-                        ]}>
-                        <View style={styles.parcelItemHeader}>
-                          <Text style={[styles.parcelRecipient, {color: theme.roles.text.primary}]} numberOfLines={1}>
-                            {parcel.recipient}
-                          </Text>
-                          {parcel.status ? (
-                            <Text style={[styles.parcelStatus, {color: theme.roles.text.secondary}]} numberOfLines={1}>
-                              {parcel.status}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <View style={styles.parcelItemMeta}>
-                          {metaItems.map((item, metaIndex) => (
-                            <Text
-                              key={`${parcel.id}_meta_${metaIndex}`}
-                              style={[styles.parcelMetaText, {color: theme.roles.text.secondary}]}
-                            >
-                              {metaIndex > 0 ? '• ' : ''}
-                              {item}
-                            </Text>
-                          ))}
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
+            <View style={styles.listHeader}>
+              <Text style={[styles.listTitle, {color: theme.roles.text.primary}]}>Activity</Text>
+              {loading ? <ActivityIndicator color={theme.palette.primary.main} /> : null}
             </View>
+            {loading && parcels.length === 0 ? (
+              <View style={styles.loaderWrapper}>
+                <ActivityIndicator color={theme.palette.primary.main} />
+              </View>
+            ) : parcels.length === 0 ? (
+              <Text style={[styles.emptyText, {color: theme.roles.text.secondary}]}>No parcels logged yet today.</Text>
+            ) : (
+              <View style={styles.parcelList}>{parcels.map(renderParcel)}</View>
+            )}
           </View>
         </ScrollView>
-        <View style={styles.bottomSpacing} />
       </View>
+      <Modal
+        visible={photoPreview.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={closePhotoPreview}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalContent, {backgroundColor: theme.roles.card.background}]}> 
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              <Text style={[styles.modalTitle, {color: theme.roles.text.primary}]}>Parcel photo</Text>
+              {photoPreview.recipient ? (
+                <Text style={[styles.modalMeta, {color: theme.roles.text.secondary}]}>Recipient: {photoPreview.recipient}</Text>
+              ) : null}
+              {photoPreview.tracking ? (
+                <Text style={[styles.modalMeta, {color: theme.roles.text.secondary}]}>Tracking #: {photoPreview.tracking}</Text>
+              ) : null}
+              {photoPreview.uri ? (
+                <Image source={{uri: photoPreview.uri}} style={styles.modalImage} resizeMode="contain" />
+              ) : (
+                <Text style={[styles.modalMeta, {color: theme.roles.status.error}]}>Photo unavailable</Text>
+              )}
+            </ScrollView>
+            <Button title="Close" onPress={closePhotoPreview} style={styles.modalButton} />
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 };
@@ -337,107 +311,130 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  metricCard: {
+  summaryCard: {
     borderWidth: 1,
     borderRadius: 16,
     padding: 20,
   },
-  parcelCard: {
-    marginTop: 20,
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 20,
-  },
-  metricHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  metricTitle: {
-    fontSize: 14,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  metricSubtitle: {
-    fontSize: 13,
-  },
-  metricValueWrapper: {
-    minWidth: 64,
-    alignItems: 'flex-end',
-  },
-  metricValue: {
-    fontSize: 36,
+  summaryTitle: {
+    fontSize: 18,
     fontWeight: '700',
   },
-  metricFooter: {
-    marginTop: 16,
-  },
-  metricStatus: {
+  summarySubtitle: {
     fontSize: 14,
+    marginTop: 4,
+  },
+  summaryMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  summaryMeta: {
+    fontSize: 13,
+  },
+  summaryError: {
+    marginTop: 12,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: 4,
   },
-  metricUpdated: {
-    fontSize: 13,
-  },
-  errorText: {
+  summaryFooter: {
     marginTop: 16,
-    fontSize: 13,
+    flexDirection: 'row',
+    alignItems: 'baseline',
   },
-  bottomSpacing: {
-    marginTop: 24,
+  summaryCount: {
+    fontSize: 36,
+    fontWeight: '700',
+    marginRight: 8,
+  },
+  summaryCountLabel: {
+    fontSize: 14,
   },
   retryButton: {
     marginTop: 16,
   },
-  parcelCardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  parcelLoadingWrapper: {
+  listHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
+    marginTop: 24,
+    marginBottom: 12,
   },
-  parcelEmptyText: {
-    fontSize: 14,
+  listTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  loaderWrapper: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 15,
   },
   parcelList: {
     marginTop: 4,
   },
   parcelItem: {
-    borderRadius: 12,
-    padding: 12,
     borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
   },
-  parcelItemSpacing: {
+  parcelSpacing: {
     marginTop: 12,
   },
-  parcelItemHeader: {
+  parcelHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  parcelRecipient: {
-    fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
-    marginRight: 12,
-  },
-  parcelStatus: {
-    fontSize: 12,
-    textTransform: 'uppercase',
-  },
-  parcelItemMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  parcelMetaText: {
+  parcelTime: {
     fontSize: 13,
-    marginRight: 12,
-    marginBottom: 4,
+    fontWeight: '600',
+  },
+  viewPhoto: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  parcelPrimary: {
+    fontSize: 15,
+    marginTop: 4,
+  },
+  parcelRemarks: {
+    fontSize: 14,
+    marginTop: 8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    borderRadius: 16,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  modalScrollContent: {
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalMeta: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  modalImage: {
+    width: 260,
+    height: 260,
+    borderRadius: 12,
+    marginTop: 12,
+    backgroundColor: 'black',
+  },
+  modalButton: {
+    marginTop: 16,
   },
 });

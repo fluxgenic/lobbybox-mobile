@@ -21,13 +21,45 @@ export type DailyParcelMetric = {
   propertyId?: string | null;
 };
 
-export type ParcelSummary = {
+export type ParcelListItem = {
   id: string;
-  recipient: string;
-  unit?: string | null;
-  carrier?: string | null;
-  status?: string | null;
-  receivedAt?: string | null;
+  photoUrl: string;
+  remarks?: string | null;
+  mobileNumber?: string | null;
+  ocrText?: string | null;
+  trackingNumber?: string | null;
+  recipientName?: string | null;
+  collectedAt?: string | null;
+  createdAt?: string | null;
+};
+
+export type ParcelUploadRequest = {
+  ext: 'jpg';
+};
+
+export type ParcelUploadResponse = {
+  uploadUrl: string;
+  blobUrl: string;
+};
+
+export type CreateParcelRequest = {
+  propertyId: string;
+  photoUrl: string;
+  remarks?: string | null;
+  mobileNumber?: string | null;
+  ocrText?: string | null;
+  trackingNumber?: string | null;
+  recipientName?: string | null;
+  collectedAt: string;
+};
+
+export type CreateParcelResponse = ParcelListItem;
+
+export type ParcelOcrSuggestion = {
+  trackingNumber?: string | null;
+  recipientName?: string | null;
+  mobileNumber?: string | null;
+  ocrText?: string | null;
 };
 
 export type AuthResponse = {
