@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {ParcelSummary} from '@/api/types';
+import {ParcelListItem} from '@/api/types';
 
 type CachedDailyParcels = {
   date: string;
   propertyId?: string | null;
   updatedAt: string;
-  parcels: ParcelSummary[];
+  parcels: ParcelListItem[];
 };
 
 const STORAGE_PREFIX = 'lobbybox_guard_parcels_daily_';
