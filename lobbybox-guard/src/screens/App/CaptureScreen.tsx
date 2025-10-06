@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import {CameraView, CameraViewRef, useCameraPermissions} from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
-import * as ImageManipulator from 'expo-image-manipulator';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
@@ -31,6 +30,46 @@ import {parcelEvents} from '@/events/parcelEvents';
 import {AppTabsParamList} from '@/navigation/AppNavigator';
 
 const LONGEST_EDGE_TARGET = 1400;
+
+type ImageManipulatorModule = typeof import('expo-image-manipulator');
+
+let cachedImageManipulator: ImageManipulatorModule | null | undefined;
+let loggedManipulatorUnavailable = false;
+let loggedManipulatorFailure = false;
+
+const loadImageManipulator = async (): Promise<ImageManipulatorModule | null> => {
+  if (Platform.OS === 'web') {
+    cachedImageManipulator = null;
+    return null;
+  }
+
+  if (cachedImageManipulator !== undefined) {
+    return cachedImageManipulator;
+  }
+
+  try {
+    const module = await import('expo-image-manipulator');
+    if (module && typeof module.manipulateAsync === 'function') {
+      cachedImageManipulator = module;
+      return module;
+    }
+  } catch (error) {
+    if (!loggedManipulatorUnavailable) {
+      console.warn('expo-image-manipulator failed to load; continuing without optimization.', error);
+      loggedManipulatorUnavailable = true;
+    }
+    cachedImageManipulator = null;
+    return null;
+  }
+
+  cachedImageManipulator = null;
+  if (!loggedManipulatorUnavailable) {
+    console.warn('expo-image-manipulator is unavailable; continuing without optimization.');
+    loggedManipulatorUnavailable = true;
+  }
+
+  return cachedImageManipulator;
+};
 
 type Step = 'camera' | 'preview' | 'details' | 'success';
 
@@ -149,27 +188,33 @@ export const CaptureScreen: React.FC = () => {
           ]
         : [];
 
-      const manipulator = ImageManipulator?.manipulateAsync;
-      const hasManipulator = typeof manipulator === 'function';
-
       let result: {uri: string; width?: number; height?: number} = {uri};
       let manipulated = false;
 
-      if (hasManipulator) {
-        try {
-          result = await manipulator(uri, actions, {
-            compress: 0.8,
-            format: ImageManipulator?.SaveFormat?.JPEG ?? 'jpeg',
-          });
-          manipulated = true;
-        } catch (error) {
-          console.warn(
-            'expo-image-manipulator failed; returning original photo without resizing or compression.',
-            error,
-          );
+      if (actions.length > 0) {
+        const manipulator = await loadImageManipulator();
+        if (manipulator) {
+          try {
+            const options: Parameters<typeof manipulator.manipulateAsync>[2] = {
+              compress: 0.8,
+              ...(manipulator.SaveFormat?.JPEG ? {format: manipulator.SaveFormat.JPEG} : {}),
+            };
+
+            result = await manipulator.manipulateAsync(uri, actions, options);
+            manipulated = true;
+          } catch (error) {
+            if (!loggedManipulatorFailure) {
+              console.warn(
+                'expo-image-manipulator failed; returning original photo without resizing or compression.',
+                error,
+              );
+              loggedManipulatorFailure = true;
+            }
+          }
+        } else if (!loggedManipulatorUnavailable) {
+          console.warn('expo-image-manipulator is unavailable; returning original photo without resizing.');
+          loggedManipulatorUnavailable = true;
         }
-      } else if (actions.length > 0) {
-        console.warn('expo-image-manipulator is unavailable; returning original photo without resizing.');
       }
 
       const resolvedUri = result.uri ?? uri;
