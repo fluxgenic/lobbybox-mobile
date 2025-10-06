@@ -15,6 +15,8 @@ import {
 import {CameraView, CameraViewRef, useCameraPermissions} from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 import {manipulateAsync, SaveFormat} from 'expo-image-manipulator';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {ScreenContainer} from '@/components/ScreenContainer';
 import {useThemeContext} from '@/theme';
@@ -79,6 +81,7 @@ export const CaptureScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<AppTabsParamList>>();
   const cameraRef = useRef<CameraViewRef>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>('camera');
   const [photo, setPhoto] = useState<CapturedPhoto | null>(null);
   const [formState, setFormState] = useState<ParcelFormState>(() => createBlankFormState());
@@ -328,24 +331,35 @@ export const CaptureScreen: React.FC = () => {
   }, [permission, requestPermission, theme]);
 
   const renderCameraStep = () => (
-    <View style={styles.cameraWrapper}>
+    <View style={[styles.cameraWrapper, {paddingTop: insets.top}]}>
       <View style={styles.cameraContainer}>
         <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
         <View style={styles.cameraOverlay}>
           <Text style={[styles.cameraHint, {color: theme.roles.text.onPrimary}]}>Align the label and tap the shutter</Text>
         </View>
       </View>
-      <View style={styles.cameraControls}>
+      <View style={[styles.cameraControls, {paddingBottom: Math.max(insets.bottom, 24)}]}>
         <TouchableOpacity
           onPress={handleCapture}
-          style={[styles.shutterButton, {borderColor: theme.roles.text.onPrimary}]}
+          style={[
+            styles.shutterButton,
+            {
+              backgroundColor: theme.roles.text.onPrimary,
+              shadowColor: '#000',
+            },
+          ]}
           accessibilityRole="button"
           accessibilityLabel="Capture parcel photo"
           disabled={isCapturing || isProcessingPhoto}>
           {isCapturing || isProcessingPhoto ? (
-            <ActivityIndicator color={theme.roles.text.onPrimary} />
+            <ActivityIndicator color={theme.roles.text.primary} />
           ) : (
-            <View style={[styles.shutterInner, {backgroundColor: theme.roles.text.onPrimary}]} />
+            <MaterialCommunityIcons
+              name="camera-iris"
+              size={38}
+              color={theme.roles.text.primary}
+              style={styles.shutterIcon}
+            />
           )}
         </TouchableOpacity>
       </View>
@@ -563,7 +577,9 @@ export const CaptureScreen: React.FC = () => {
   }
 
   return (
-    <ScreenContainer style={styles.screen}>{content}</ScreenContainer>
+    <ScreenContainer style={styles.screen} edges={step === 'camera' ? ['left', 'right'] : undefined}>
+      {content}
+    </ScreenContainer>
   );
 };
 
@@ -599,13 +615,18 @@ const styles = StyleSheet.create({
   cameraWrapper: {
     flex: 1,
     backgroundColor: 'black',
+    justifyContent: 'space-between',
   },
   cameraContainer: {
     flex: 1,
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginHorizontal: 24,
+    marginBottom: 24,
   },
   cameraOverlay: {
     position: 'absolute',
-    bottom: 32,
+    bottom: 24,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -615,21 +636,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cameraControls: {
-    paddingVertical: 24,
+    paddingTop: 12,
     alignItems: 'center',
   },
   shutterButton: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    borderWidth: 4,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 4,
   },
-  shutterInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+  shutterIcon: {
+    marginLeft: 2,
   },
   previewContent: {
     padding: 24,
