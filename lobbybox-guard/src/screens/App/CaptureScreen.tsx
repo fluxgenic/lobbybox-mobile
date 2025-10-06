@@ -13,8 +13,9 @@ import {
   View,
 } from 'react-native';
 import {CameraView, CameraViewRef, useCameraPermissions} from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
-import {manipulateAsync, SaveFormat} from 'expo-image-manipulator';
+import {createUploadTask, FileSystemUploadType} from 'expo-file-system';
+import {getInfoAsync} from 'expo-file-system/legacy';
+import * as ImageManipulator from 'expo-image-manipulator';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
@@ -31,6 +32,9 @@ import {parcelEvents} from '@/events/parcelEvents';
 import {AppTabsParamList} from '@/navigation/AppNavigator';
 
 const LONGEST_EDGE_TARGET = 1400;
+
+let loggedManipulatorUnavailable = false;
+let loggedManipulatorFailure = false;
 
 type Step = 'camera' | 'preview' | 'details' | 'success';
 
@@ -149,17 +153,41 @@ export const CaptureScreen: React.FC = () => {
           ]
         : [];
 
-      const result = await manipulateAsync(uri, actions, {
-        compress: 0.8,
-        format: SaveFormat.JPEG,
-      });
+      let result: {uri: string; width?: number; height?: number} = {uri};
+      let manipulated = false;
 
-      const info = await FileSystem.getInfoAsync(result.uri);
+      if (actions.length > 0 && Platform.OS !== 'web') {
+        if (typeof ImageManipulator.manipulateAsync === 'function') {
+          try {
+            const options: Parameters<typeof ImageManipulator.manipulateAsync>[2] = {
+              compress: 0.8,
+              ...(ImageManipulator.SaveFormat?.JPEG ? {format: ImageManipulator.SaveFormat.JPEG} : {}),
+            };
+
+            result = await ImageManipulator.manipulateAsync(uri, actions, options);
+            manipulated = true;
+          } catch (error) {
+            if (!loggedManipulatorFailure) {
+              console.warn(
+                'expo-image-manipulator failed; returning original photo without resizing or compression.',
+                error,
+              );
+              loggedManipulatorFailure = true;
+            }
+          }
+        } else if (!loggedManipulatorUnavailable) {
+          console.warn('expo-image-manipulator is unavailable; returning original photo without resizing.');
+          loggedManipulatorUnavailable = true;
+        }
+      }
+
+      const resolvedUri = result.uri ?? uri;
+      const info = await getInfoAsync(resolvedUri);
 
       return {
-        uri: result.uri,
-        width: result.width ?? targetWidth,
-        height: result.height ?? targetHeight,
+        uri: resolvedUri,
+        width: result.width ?? (manipulated ? targetWidth : resolved.width),
+        height: result.height ?? (manipulated ? targetHeight : resolved.height),
         size: info.exists ? info.size : undefined,
       };
     },
@@ -209,12 +237,12 @@ export const CaptureScreen: React.FC = () => {
     setUploadProgress(0);
     try {
       const sas = await requestParcelUpload();
-      const uploadTask = FileSystem.createUploadTask(
+      const uploadTask = createUploadTask(
         sas.uploadUrl,
         photo.uri,
         {
           httpMethod: 'PUT',
-          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          uploadType: FileSystemUploadType.BINARY_CONTENT,
           headers: {
             'Content-Type': 'image/jpeg',
           },
