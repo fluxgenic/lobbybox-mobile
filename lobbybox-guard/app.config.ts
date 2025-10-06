@@ -58,7 +58,7 @@ export default ({config}: ConfigContext): ExpoConfig => {
     scheme: 'lobbyboxguard',
     userInterfaceStyle: 'automatic',
     extra,
-    plugins: ['expo-camera', 'expo-image-manipulator', 'expo-file-system'],
+    plugins: ['expo-camera', 'expo-file-system'],
     updates: {
       fallbackToCacheTimeout: 0,
     },
