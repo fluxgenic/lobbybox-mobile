@@ -1,4 +1,4 @@
-declare module 'expo-file-system' {
+declare module 'expo-file-system/legacy' {
   export enum FileSystemUploadType {
     BINARY_CONTENT = 'binary',
   }

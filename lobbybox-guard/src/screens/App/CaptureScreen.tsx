@@ -14,8 +14,7 @@ import {
   View,
 } from 'react-native';
 import {CameraView, CameraViewRef, useCameraPermissions} from 'expo-camera';
-import {createUploadTask} from 'expo-file-system';
-import {getInfoAsync} from 'expo-file-system/legacy';
+import {createUploadTask, getInfoAsync} from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
