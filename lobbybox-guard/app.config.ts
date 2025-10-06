@@ -58,6 +58,7 @@ export default ({config}: ConfigContext): ExpoConfig => {
     scheme: 'lobbyboxguard',
     userInterfaceStyle: 'automatic',
     extra,
+    plugins: ['expo-camera', 'expo-image-manipulator', 'expo-file-system'],
     updates: {
       fallbackToCacheTimeout: 0,
     },
@@ -65,12 +66,16 @@ export default ({config}: ConfigContext): ExpoConfig => {
     ios: {
       supportsTablet: false,
       buildNumber: iosBuildNumber,
+      infoPlist: {
+        NSCameraUsageDescription: 'Allow Lobbybox Guard to capture parcel photos for delivery records.',
+      },
     },
     android: {
       adaptiveIcon: {
         backgroundColor: '#ffffff',
       },
       versionCode: androidVersionCode,
+      permissions: ['CAMERA'],
     },
     web: {
       bundler: 'metro',

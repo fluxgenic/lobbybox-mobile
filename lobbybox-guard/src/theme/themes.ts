@@ -11,7 +11,7 @@ export type ThemePalette = {
   info: typeof colorTokens.color.info;
   success: typeof colorTokens.color.success;
   error: typeof colorTokens.color.error;
-  border: typeof colorTokens.color.border;
+  border: {divider: string};
   text: {primary: string; secondary: string};
 };
 
