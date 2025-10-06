@@ -12,6 +12,9 @@ export type User = {
   fullName?: string | null;
   role: Role;
   displayName?: string | null;
+  tenantId?: string | null;
+  propertyName?: string | null;
+  propertyCode?: string | null;
   property?: PropertySummary | null;
 };
 

@@ -1,6 +1,7 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Linking,
@@ -13,8 +14,9 @@ import {
   View,
 } from 'react-native';
 import {CameraView, CameraViewRef, useCameraPermissions} from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
-import {manipulateAsync, SaveFormat} from 'expo-image-manipulator';
+import {createUploadTask, FileSystemUploadType} from 'expo-file-system';
+import {getInfoAsync} from 'expo-file-system/legacy';
+import * as ImageManipulator from 'expo-image-manipulator';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
@@ -31,6 +33,9 @@ import {parcelEvents} from '@/events/parcelEvents';
 import {AppTabsParamList} from '@/navigation/AppNavigator';
 
 const LONGEST_EDGE_TARGET = 1400;
+
+let loggedManipulatorUnavailable = false;
+let loggedManipulatorFailure = false;
 
 type Step = 'camera' | 'preview' | 'details' | 'success';
 
@@ -94,13 +99,44 @@ export const CaptureScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [lastCreatedParcel, setLastCreatedParcel] = useState<CreateParcelResponse | null>(null);
   const {user} = useAuth();
-  const propertyId = user?.property?.id ?? null;
+  const propertyId = user?.property?.id ?? user?.tenantId ?? null;
+  const scanningProgress = useRef(new Animated.Value(0)).current;
+  const scanningAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (!permission) {
       requestPermission();
     }
   }, [permission, requestPermission]);
+
+  useEffect(() => {
+    const shouldAnimate = isCapturing || isProcessingPhoto;
+
+    if (shouldAnimate) {
+      scanningProgress.setValue(0);
+      const animation = Animated.loop(
+        Animated.timing(scanningProgress, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      );
+      scanningAnimationRef.current = animation;
+      animation.start();
+    } else if (scanningAnimationRef.current) {
+      scanningAnimationRef.current.stop();
+      scanningAnimationRef.current = null;
+      scanningProgress.setValue(0);
+    }
+
+    return () => {
+      if (scanningAnimationRef.current) {
+        scanningAnimationRef.current.stop();
+        scanningAnimationRef.current = null;
+      }
+      scanningProgress.setValue(0);
+    };
+  }, [isCapturing, isProcessingPhoto, scanningProgress]);
 
   const resetFlow = useCallback(() => {
     setStep('camera');
@@ -149,17 +185,41 @@ export const CaptureScreen: React.FC = () => {
           ]
         : [];
 
-      const result = await manipulateAsync(uri, actions, {
-        compress: 0.8,
-        format: SaveFormat.JPEG,
-      });
+      let result: {uri: string; width?: number; height?: number} = {uri};
+      let manipulated = false;
 
-      const info = await FileSystem.getInfoAsync(result.uri);
+      if (actions.length > 0 && Platform.OS !== 'web') {
+        if (typeof ImageManipulator.manipulateAsync === 'function') {
+          try {
+            const options: Parameters<typeof ImageManipulator.manipulateAsync>[2] = {
+              compress: 0.8,
+              ...(ImageManipulator.SaveFormat?.JPEG ? {format: ImageManipulator.SaveFormat.JPEG} : {}),
+            };
+
+            result = await ImageManipulator.manipulateAsync(uri, actions, options);
+            manipulated = true;
+          } catch (error) {
+            if (!loggedManipulatorFailure) {
+              console.warn(
+                'expo-image-manipulator failed; returning original photo without resizing or compression.',
+                error,
+              );
+              loggedManipulatorFailure = true;
+            }
+          }
+        } else if (!loggedManipulatorUnavailable) {
+          console.warn('expo-image-manipulator is unavailable; returning original photo without resizing.');
+          loggedManipulatorUnavailable = true;
+        }
+      }
+
+      const resolvedUri = result.uri ?? uri;
+      const info = await getInfoAsync(resolvedUri);
 
       return {
-        uri: result.uri,
-        width: result.width ?? targetWidth,
-        height: result.height ?? targetHeight,
+        uri: resolvedUri,
+        width: result.width ?? (manipulated ? targetWidth : resolved.width),
+        height: result.height ?? (manipulated ? targetHeight : resolved.height),
         size: info.exists ? info.size : undefined,
       };
     },
@@ -209,12 +269,12 @@ export const CaptureScreen: React.FC = () => {
     setUploadProgress(0);
     try {
       const sas = await requestParcelUpload();
-      const uploadTask = FileSystem.createUploadTask(
+      const uploadTask = createUploadTask(
         sas.uploadUrl,
         photo.uri,
         {
           httpMethod: 'PUT',
-          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          uploadType: FileSystemUploadType.BINARY_CONTENT,
           headers: {
             'Content-Type': 'image/jpeg',
           },
@@ -333,10 +393,29 @@ export const CaptureScreen: React.FC = () => {
   const renderCameraStep = () => (
     <View style={[styles.cameraWrapper, {paddingTop: insets.top}]}>
       <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" enableShutterSound={false} />
         <View style={styles.cameraOverlay}>
           <Text style={[styles.cameraHint, {color: theme.roles.text.onPrimary}]}>Align the label and tap the shutter</Text>
         </View>
+        {(isCapturing || isProcessingPhoto) && (
+          <View style={styles.scannerOverlay} pointerEvents="none">
+            <Animated.View
+              style={[
+                styles.scannerBar,
+                {
+                  transform: [
+                    {
+                      translateY: scanningProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-160, 160],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          </View>
+        )}
       </View>
       <View style={[styles.cameraControls, {paddingBottom: Math.max(insets.bottom, 24)}]}>
         <TouchableOpacity
@@ -623,6 +702,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 24,
     marginBottom: 24,
+  },
+  scannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  },
+  scannerBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 120,
+    marginHorizontal: 24,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   cameraOverlay: {
     position: 'absolute',
