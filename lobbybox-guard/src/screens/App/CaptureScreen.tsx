@@ -99,7 +99,7 @@ export const CaptureScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [lastCreatedParcel, setLastCreatedParcel] = useState<CreateParcelResponse | null>(null);
   const {user} = useAuth();
-  const propertyId = user?.property?.id ?? null;
+  const propertyId = user?.property?.id ?? user?.tenantId ?? null;
   const scanningProgress = useRef(new Animated.Value(0)).current;
   const scanningAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
 

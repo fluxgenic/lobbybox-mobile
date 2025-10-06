@@ -49,7 +49,7 @@ export const HomeScreen: React.FC = () => {
   const {user, refreshProfile} = useAuth();
   const {isOffline} = useNetworkStatus();
   const todayIso = getTodayIsoDate();
-  const propertyId = user?.property?.id ?? null;
+  const propertyId = user?.property?.id ?? user?.tenantId ?? null;
 
   const [parcels, setParcels] = useState<ParcelListItem[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);

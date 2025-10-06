@@ -20,10 +20,42 @@ type AuthContextValue = {
 
 const normalizeUser = (profile: User): User => {
   const displayName = profile.fullName?.trim()?.length ? profile.fullName : profile.email;
+  const normalizedPropertyName =
+    profile.property?.name?.trim() ?? profile.propertyName?.trim() ?? null;
+  const normalizedPropertyCode =
+    profile.property?.code?.trim() ?? profile.propertyCode?.trim() ?? null;
+
+  const propertySummary: User['property'] = (() => {
+    if (profile.property?.id) {
+      return {
+        id: profile.property.id,
+        name: normalizedPropertyName ?? profile.property.name,
+        code: normalizedPropertyCode ?? profile.property.code ?? null,
+      };
+    }
+
+    if (profile.tenantId) {
+      return {
+        id: profile.tenantId,
+        name: normalizedPropertyName ?? 'Assigned property',
+        code: normalizedPropertyCode ?? null,
+      };
+    }
+
+    if (profile.property) {
+      return profile.property;
+    }
+
+    return null;
+  })();
+
   return {
     ...profile,
     fullName: profile.fullName ?? displayName,
     displayName,
+    propertyName: normalizedPropertyName ?? null,
+    propertyCode: normalizedPropertyCode ?? null,
+    property: propertySummary,
   };
 };
 
