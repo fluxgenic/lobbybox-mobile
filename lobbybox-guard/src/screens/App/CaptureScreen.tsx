@@ -257,18 +257,44 @@ export const CaptureScreen: React.FC = () => {
   }, [permission?.granted, requestPermission, isCapturing, optimizePhoto]);
 
   const handleUsePhoto = useCallback(async () => {
+    console.log('[CaptureScreen] handleUsePhoto invoked');
+
     if (!photo) {
+      console.warn('[CaptureScreen] handleUsePhoto called without an available photo.');
       return;
     }
+
+    if (isUploading) {
+      console.log('[CaptureScreen] handleUsePhoto aborted because an upload is already in progress.');
+      return;
+    }
+
     if (!propertyId) {
+      console.warn('[CaptureScreen] Unable to determine property while using photo.');
       showToast('Unable to determine your assigned property.', {type: 'error'});
       return;
     }
+
+    console.log('[CaptureScreen] Starting upload for photo', {
+      uri: photo.uri,
+      width: photo.width,
+      height: photo.height,
+      size: photo.size,
+    });
+
     setIsUploading(true);
     setUploadError(null);
     setUploadProgress(0);
+
     try {
+      console.log('[CaptureScreen] Requesting SAS for parcel upload.');
       const sas = await requestParcelUpload();
+      console.log('[CaptureScreen] Received SAS response', {
+        hasUploadUrl: Boolean(sas.uploadUrl),
+        hasBlobUrl: Boolean(sas.blobUrl),
+      });
+
+      let lastLoggedProgressBucket = -1;
       const uploadTask = createUploadTask(
         sas.uploadUrl,
         photo.uri,
@@ -281,17 +307,35 @@ export const CaptureScreen: React.FC = () => {
         },
         ({totalBytesSent, totalBytesExpectedToSend}) => {
           if (totalBytesExpectedToSend > 0) {
-            setUploadProgress(totalBytesSent / totalBytesExpectedToSend);
+            const progress = totalBytesSent / totalBytesExpectedToSend;
+            setUploadProgress(progress);
+
+            const progressBucket = Math.round(progress * 10);
+            if (progressBucket !== lastLoggedProgressBucket) {
+              console.log('[CaptureScreen] Upload progress', {
+                sent: totalBytesSent,
+                expected: totalBytesExpectedToSend,
+                progress,
+              });
+              lastLoggedProgressBucket = progressBucket;
+            }
           }
         },
       );
+
+      console.log('[CaptureScreen] Beginning upload task.');
       await uploadTask.uploadAsync();
+      console.log('[CaptureScreen] Upload task completed successfully.');
+
       setPhotoUrl(sas.blobUrl);
       setUploadProgress(1);
 
       let suggestions: Partial<ParcelFormState> = {};
       try {
+        console.log('[CaptureScreen] Requesting OCR suggestions for uploaded photo.');
         const response = await fetchParcelOcrSuggestions(sas.blobUrl);
+        console.log('[CaptureScreen] Received OCR suggestions', response);
+
         suggestions = {
           trackingNumber: response.trackingNumber ?? '',
           recipientName: response.recipientName ?? '',
@@ -299,6 +343,7 @@ export const CaptureScreen: React.FC = () => {
           ocrText: response.ocrText ?? '',
         };
       } catch (error) {
+        console.error('[CaptureScreen] Failed to fetch OCR suggestions', error);
         const parsed = parseApiError(error, 'Unable to auto-fill from the photo.');
         showToast(parsed.message, {type: 'info'});
       }
@@ -309,13 +354,16 @@ export const CaptureScreen: React.FC = () => {
         collectedAt: new Date().toISOString(),
       }));
       setStep('details');
+      console.log('[CaptureScreen] handleUsePhoto completed successfully.');
     } catch (error) {
+      console.error('[CaptureScreen] Upload failed', error);
       const parsed = parseApiError(error, 'Unable to upload photo.');
       setUploadError(parsed);
     } finally {
       setIsUploading(false);
+      console.log('[CaptureScreen] handleUsePhoto finished');
     }
-  }, [photo, propertyId]);
+  }, [isUploading, photo, propertyId]);
 
   const handleSaveParcel = useCallback(async () => {
     if (!propertyId || !photoUrl) {
