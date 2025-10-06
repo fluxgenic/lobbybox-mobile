@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import {CameraView, CameraViewRef, useCameraPermissions} from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
-import {manipulateAsync, SaveFormat} from 'expo-image-manipulator';
+import * as ImageManipulator from 'expo-image-manipulator';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
@@ -149,17 +149,28 @@ export const CaptureScreen: React.FC = () => {
           ]
         : [];
 
-      const result = await manipulateAsync(uri, actions, {
-        compress: 0.8,
-        format: SaveFormat.JPEG,
-      });
+      const manipulator = ImageManipulator?.manipulateAsync;
+      const hasManipulator = typeof manipulator === 'function';
 
-      const info = await FileSystem.getInfoAsync(result.uri);
+      const result =
+        hasManipulator
+          ? await manipulator(uri, actions, {
+              compress: 0.8,
+              format: ImageManipulator?.SaveFormat?.JPEG ?? 'jpeg',
+            })
+          : {uri};
+
+      if (!hasManipulator && actions.length > 0) {
+        console.warn('expo-image-manipulator is unavailable; returning original photo without resizing.');
+      }
+
+      const resolvedUri = result.uri ?? uri;
+      const info = await FileSystem.getInfoAsync(resolvedUri);
 
       return {
-        uri: result.uri,
-        width: result.width ?? targetWidth,
-        height: result.height ?? targetHeight,
+        uri: resolvedUri,
+        width: result.width ?? (hasManipulator ? targetWidth : resolved.width),
+        height: result.height ?? (hasManipulator ? targetHeight : resolved.height),
         size: info.exists ? info.size : undefined,
       };
     },
