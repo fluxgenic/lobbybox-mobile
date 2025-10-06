@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import {CameraView, CameraViewRef, useCameraPermissions} from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
@@ -31,45 +32,8 @@ import {AppTabsParamList} from '@/navigation/AppNavigator';
 
 const LONGEST_EDGE_TARGET = 1400;
 
-type ImageManipulatorModule = typeof import('expo-image-manipulator');
-
-let cachedImageManipulator: ImageManipulatorModule | null | undefined;
 let loggedManipulatorUnavailable = false;
 let loggedManipulatorFailure = false;
-
-const loadImageManipulator = async (): Promise<ImageManipulatorModule | null> => {
-  if (Platform.OS === 'web') {
-    cachedImageManipulator = null;
-    return null;
-  }
-
-  if (cachedImageManipulator !== undefined) {
-    return cachedImageManipulator;
-  }
-
-  try {
-    const module = await import('expo-image-manipulator');
-    if (module && typeof module.manipulateAsync === 'function') {
-      cachedImageManipulator = module;
-      return module;
-    }
-  } catch (error) {
-    if (!loggedManipulatorUnavailable) {
-      console.warn('expo-image-manipulator failed to load; continuing without optimization.', error);
-      loggedManipulatorUnavailable = true;
-    }
-    cachedImageManipulator = null;
-    return null;
-  }
-
-  cachedImageManipulator = null;
-  if (!loggedManipulatorUnavailable) {
-    console.warn('expo-image-manipulator is unavailable; continuing without optimization.');
-    loggedManipulatorUnavailable = true;
-  }
-
-  return cachedImageManipulator;
-};
 
 type Step = 'camera' | 'preview' | 'details' | 'success';
 
@@ -191,16 +155,15 @@ export const CaptureScreen: React.FC = () => {
       let result: {uri: string; width?: number; height?: number} = {uri};
       let manipulated = false;
 
-      if (actions.length > 0) {
-        const manipulator = await loadImageManipulator();
-        if (manipulator) {
+      if (actions.length > 0 && Platform.OS !== 'web') {
+        if (typeof ImageManipulator.manipulateAsync === 'function') {
           try {
-            const options: Parameters<typeof manipulator.manipulateAsync>[2] = {
+            const options: Parameters<typeof ImageManipulator.manipulateAsync>[2] = {
               compress: 0.8,
-              ...(manipulator.SaveFormat?.JPEG ? {format: manipulator.SaveFormat.JPEG} : {}),
+              ...(ImageManipulator.SaveFormat?.JPEG ? {format: ImageManipulator.SaveFormat.JPEG} : {}),
             };
 
-            result = await manipulator.manipulateAsync(uri, actions, options);
+            result = await ImageManipulator.manipulateAsync(uri, actions, options);
             manipulated = true;
           } catch (error) {
             if (!loggedManipulatorFailure) {
