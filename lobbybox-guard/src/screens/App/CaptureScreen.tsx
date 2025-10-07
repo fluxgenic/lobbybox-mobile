@@ -80,6 +80,107 @@ const formatTimestamp = (value: string) => {
   }
 };
 
+const parseOcrTextSuggestions = (ocrText: string | undefined | null): Partial<ParcelFormState> => {
+  if (!ocrText) {
+    return {};
+  }
+
+  const lines = ocrText
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) {
+    return {};
+  }
+
+  const keyToField: Record<string, keyof Pick<ParcelFormState, 'trackingNumber' | 'recipientName' | 'mobileNumber' | 'remarks'>> = {
+    tracking: 'trackingNumber',
+    trackingnumber: 'trackingNumber',
+    trackingno: 'trackingNumber',
+    parcelno: 'trackingNumber',
+    parcelnumber: 'trackingNumber',
+    awb: 'trackingNumber',
+    consignment: 'trackingNumber',
+    recipient: 'recipientName',
+    recipientname: 'recipientName',
+    name: 'recipientName',
+    to: 'recipientName',
+    mobile: 'mobileNumber',
+    mobilenumber: 'mobileNumber',
+    mobilephone: 'mobileNumber',
+    phone: 'mobileNumber',
+    tel: 'mobileNumber',
+    contact: 'mobileNumber',
+    hp: 'mobileNumber',
+    remarks: 'remarks',
+    remark: 'remarks',
+    notes: 'remarks',
+    note: 'remarks',
+    address: 'remarks',
+    blk: 'remarks',
+    block: 'remarks',
+    unit: 'remarks',
+  };
+
+  const parsed: Partial<ParcelFormState> = {};
+  const unmatchedLines: string[] = [];
+
+  const separators = [':', '–', '—', '-', '•'];
+
+  for (const line of lines) {
+    const separator = separators.find(sep => line.includes(sep));
+    if (!separator) {
+      unmatchedLines.push(line);
+      continue;
+    }
+
+    const [rawKey, ...rawValueParts] = line.split(separator);
+    const rawValue = rawValueParts.join(separator).trim();
+    const key = rawKey.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (!rawValue || !key) {
+      unmatchedLines.push(line);
+      continue;
+    }
+
+    const field = keyToField[key];
+    if (!field) {
+      unmatchedLines.push(line);
+      continue;
+    }
+
+    if (field === 'mobileNumber') {
+      const cleaned = rawValue.replace(/[^+\d]/g, '');
+      if (cleaned.length === 0) {
+        unmatchedLines.push(line);
+        continue;
+      }
+      parsed[field] = cleaned;
+      continue;
+    }
+
+    parsed[field] = rawValue;
+  }
+
+  if (!parsed.mobileNumber) {
+    const phoneRegex = /(\+?\d[\d\s-]{6,}\d)/;
+    for (const line of lines) {
+      const phoneMatch = line.match(phoneRegex);
+      if (phoneMatch) {
+        parsed.mobileNumber = phoneMatch[1].replace(/[^+\d]/g, '');
+        break;
+      }
+    }
+  }
+
+  if (!parsed.remarks && unmatchedLines.length > 0) {
+    parsed.remarks = unmatchedLines.join('\n');
+  }
+
+  return parsed;
+};
+
 export const CaptureScreen: React.FC = () => {
   const {theme} = useThemeContext();
   const navigation = useNavigation<NavigationProp<AppTabsParamList>>();
@@ -334,11 +435,14 @@ export const CaptureScreen: React.FC = () => {
         const response = await fetchParcelOcrSuggestions(sas.blobUrl);
         console.log('[CaptureScreen] Received OCR suggestions', response);
 
+        const parsedFromOcrText = parseOcrTextSuggestions(response.ocrText);
+
         suggestions = {
-          trackingNumber: response.trackingNumber ?? '',
-          recipientName: response.recipientName ?? '',
-          mobileNumber: response.mobileNumber ?? '',
+          trackingNumber: response.trackingNumber ?? parsedFromOcrText.trackingNumber ?? '',
+          recipientName: response.recipientName ?? parsedFromOcrText.recipientName ?? '',
+          mobileNumber: response.mobileNumber ?? parsedFromOcrText.mobileNumber ?? '',
           ocrText: response.ocrText ?? '',
+          remarks: parsedFromOcrText.remarks ?? '',
         };
       } catch (error) {
         console.error('[CaptureScreen] Failed to fetch OCR suggestions', error);
