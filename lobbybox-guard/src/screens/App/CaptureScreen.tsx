@@ -301,6 +301,7 @@ export const CaptureScreen: React.FC = () => {
           httpMethod: 'PUT',
           headers: {
             'Content-Type': 'image/jpeg',
+            'x-ms-blob-type': 'BlockBlob',
           },
         },
         ({totalBytesSent, totalBytesExpectedToSend}) => {
@@ -330,8 +331,8 @@ export const CaptureScreen: React.FC = () => {
 
       let suggestions: Partial<ParcelFormState> = {};
       try {
-        console.log('[CaptureScreen] Requesting OCR suggestions for uploaded photo.');
-        const response = await fetchParcelOcrSuggestions(sas.blobUrl);
+        console.log('[CaptureScreen] Requesting OCR suggestions for uploaded photo.',sas.readUrl);
+        const response = await fetchParcelOcrSuggestions(sas.readUrl);
         console.log('[CaptureScreen] Received OCR suggestions', response);
 
         suggestions = {

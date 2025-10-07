@@ -43,6 +43,8 @@ export type ParcelUploadRequest = {
 export type ParcelUploadResponse = {
   uploadUrl: string;
   blobUrl: string;
+  readUrl:string;
+  blobName:string,
 };
 
 export type CreateParcelRequest = {
