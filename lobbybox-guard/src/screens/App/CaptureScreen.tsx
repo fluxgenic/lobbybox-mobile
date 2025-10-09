@@ -564,6 +564,7 @@ export const CaptureScreen: React.FC = () => {
     );
   }, [permission, requestPermission, theme]);
 
+  const topContentPadding = Math.max(8 - insets.top, 0);
   const renderCameraStep = () => (
     <View style={[styles.cameraWrapper, { paddingTop: insets.top }]}>
       <View style={styles.cameraContainer}>
@@ -628,9 +629,16 @@ export const CaptureScreen: React.FC = () => {
       <KeyboardAvoidingView
         behavior={Platform.select({ ios: 'padding', android: undefined })}
         style={styles.flex}
-        keyboardVerticalOffset={Platform.select({ ios: 24, android: 0 })}>
+        keyboardVerticalOffset={Platform.select({ ios: insets.top, android: 0 })}>
         <ScrollView
-          contentContainerStyle={[styles.previewContent, { paddingBottom: 24 + Math.max(insets.bottom - 8, 0) }]}
+          contentContainerStyle={[
+            styles.previewContent,
+            {
+              paddingTop: topContentPadding,
+              paddingBottom: 24 + Math.max(insets.bottom - 8, 0),
+            },
+          ]}
+          contentInsetAdjustmentBehavior="never"
           keyboardShouldPersistTaps="handled">
           <Image
             source={{ uri: photo.uri }}
@@ -705,10 +713,17 @@ export const CaptureScreen: React.FC = () => {
     <KeyboardAvoidingView
       behavior={Platform.select({ ios: 'padding', android: undefined })}
       style={styles.flex}
-      keyboardVerticalOffset={Platform.select({ ios: 24, android: 0 })}>
+      keyboardVerticalOffset={Platform.select({ ios: insets.top, android: 0 })}>
       <ScrollView
         ref={detailsScrollViewRef}
-        contentContainerStyle={[styles.detailsContent, { paddingBottom: 32 + Math.max(insets.bottom - 12, 0) }]}
+        contentContainerStyle={[
+          styles.detailsContent,
+          {
+            paddingTop: topContentPadding,
+            paddingBottom: 32 + Math.max(insets.bottom - 12, 0),
+          },
+        ]}
+        contentInsetAdjustmentBehavior="never"
         keyboardShouldPersistTaps="handled">
         <Text style={[styles.detailsTitle, { color: theme.roles.text.primary }]}>Confirm parcel details</Text>
         <Text style={[styles.detailsSubtitle, { color: theme.roles.text.secondary }]}>Review the OCR suggestions and update as needed.</Text>
@@ -809,7 +824,15 @@ export const CaptureScreen: React.FC = () => {
   );
 
   const renderSuccessStep = () => (
-    <ScrollView contentContainerStyle={styles.successContent}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.successContent,
+        {
+          paddingTop: topContentPadding,
+          paddingBottom: 24 + Math.max(insets.bottom - 8, 0),
+        },
+      ]}
+      contentInsetAdjustmentBehavior="never">
       <Text style={[styles.successTitle, { color: theme.roles.text.primary }]}>Parcel recorded</Text>
       <Text style={[styles.successSubtitle, { color: theme.roles.text.secondary }]}>You can capture another or review today's log.</Text>
       {photo ? (
@@ -951,7 +974,6 @@ const styles = StyleSheet.create({
   },
   previewContent: {
     flexGrow: 1,
-    paddingTop: 8,
     paddingHorizontal: 24,
     paddingBottom: 24,
   },
@@ -1039,7 +1061,6 @@ const styles = StyleSheet.create({
   },
   detailsContent: {
     flexGrow: 1,
-    paddingTop: 8,
     paddingHorizontal: 24,
     paddingBottom: 32,
   },
@@ -1082,9 +1103,7 @@ const styles = StyleSheet.create({
   },
   successContent: {
     flexGrow: 1,
-    paddingTop: 8,
     paddingHorizontal: 24,
-    paddingBottom: 24,
     alignItems: 'center',
   },
   successTitle: {
