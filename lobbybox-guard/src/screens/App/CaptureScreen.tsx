@@ -26,7 +26,7 @@ import { Button } from '@/components/Button';
 import { ProgressBar } from '@/components/ProgressBar';
 import { useAuth } from '@/context/AuthContext';
 import { createParcel, fetchParcelOcrSuggestions, requestParcelUpload } from '@/api/parcels';
-import { CreateParcelResponse } from '@/api/types';
+import { CreateParcelRequest, CreateParcelResponse } from '@/api/types';
 import { parseApiError, ParsedApiError } from '@/utils/error';
 import { parseRawTextToFields } from '@/utils/parcelOcrParser';
 import { showErrorToast, showToast } from '@/utils/toast';
@@ -63,6 +63,8 @@ type ParcelFormState = {
 };
 
 type ParcelFieldKey = keyof ParcelFormValues;
+
+type EntryMode = 'photo' | 'manual';
 
 const createBlankFormState = (): ParcelFormState => ({
   trackingNumber: '',
@@ -137,6 +139,7 @@ export const CaptureScreen: React.FC = () => {
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastCreatedParcel, setLastCreatedParcel] = useState<CreateParcelResponse | null>(null);
+  const [entryMode, setEntryMode] = useState<EntryMode>('photo');
   const { user } = useAuth();
   const propertyId = user?.property?.id ?? user?.tenantId ?? null;
   const scanningProgress = useRef(new Animated.Value(0)).current;
@@ -146,7 +149,7 @@ export const CaptureScreen: React.FC = () => {
   const recipientNameInputRef = useRef<TextInput | null>(null);
   const mobileNumberInputRef = useRef<TextInput | null>(null);
   const remarksInputRef = useRef<TextInput | null>(null);
-  const fieldLayoutsRef = useRef<Record<ParcelFieldKey, number>>({});
+  const fieldLayoutsRef = useRef<Partial<Record<ParcelFieldKey, number>>>({});
 
   useEffect(() => {
     if (!permission) {
@@ -184,6 +187,7 @@ export const CaptureScreen: React.FC = () => {
   }, [isCapturing, isProcessingPhoto, scanningProgress]);
 
   const resetFlow = useCallback(() => {
+    setEntryMode('photo');
     setStep('camera');
     setPhoto(null);
     setPhotoUrl(null);
@@ -193,6 +197,36 @@ export const CaptureScreen: React.FC = () => {
     setIsSaving(false);
     setFormState(createBlankFormState());
     setFormErrors({});
+    setLastCreatedParcel(null);
+    fieldLayoutsRef.current = {};
+  }, []);
+
+  const beginManualEntry = useCallback(() => {
+    setEntryMode('manual');
+    setStep('details');
+    setPhoto(null);
+    setPhotoUrl(null);
+    setUploadProgress(0);
+    setUploadError(null);
+    setIsUploading(false);
+    setIsSaving(false);
+    setFormState(createBlankFormState());
+    setFormErrors({});
+    setLastCreatedParcel(null);
+    fieldLayoutsRef.current = {};
+  }, []);
+
+  const returnToCamera = useCallback(() => {
+    setEntryMode('photo');
+    setStep('camera');
+    setPhoto(null);
+    setPhotoUrl(null);
+    setUploadProgress(0);
+    setUploadError(null);
+    setIsUploading(false);
+    setIsSaving(false);
+    setFormErrors({});
+    setFormState(createBlankFormState());
     setLastCreatedParcel(null);
     fieldLayoutsRef.current = {};
   }, []);
@@ -332,6 +366,7 @@ export const CaptureScreen: React.FC = () => {
       return;
     }
     try {
+      setEntryMode('photo');
       setIsCapturing(true);
       setIsProcessingPhoto(true);
       const result = await cameraRef.current.takePictureAsync({
@@ -451,6 +486,7 @@ export const CaptureScreen: React.FC = () => {
         ...suggestions,
         collectedAt: new Date().toISOString(),
       }));
+      setEntryMode('photo');
       setStep('details');
       setFormErrors({});
       fieldLayoutsRef.current = {};
@@ -466,8 +502,13 @@ export const CaptureScreen: React.FC = () => {
   }, [isUploading, photo, propertyId]);
 
   const handleSaveParcel = useCallback(async () => {
-    if (!propertyId || !photoUrl) {
-      showToast('Missing parcel details. Please try again.', { type: 'error' });
+    if (!propertyId) {
+      showToast('Unable to determine your assigned property.', { type: 'error' });
+      return;
+    }
+
+    if (entryMode === 'photo' && !photoUrl) {
+      showToast('Missing parcel photo. Please try again.', { type: 'error' });
       return;
     }
 
@@ -500,16 +541,21 @@ export const CaptureScreen: React.FC = () => {
 
     setIsSaving(true);
     try {
-      const created = await createParcel({
+      const payload: CreateParcelRequest = {
         propertyId,
-        photoUrl,
         remarks: sanitizeInput(cleanedValues.remarks) ?? null,
         mobileNumber: sanitizeInput(cleanedValues.mobileNumber) ?? null,
         ocrText: '',
         trackingNumber: sanitizeInput(cleanedValues.trackingNumber) ?? null,
         recipientName: sanitizeInput(cleanedValues.recipientName) ?? null,
         collectedAt: collectedAtIso,
-      });
+      };
+
+      if (photoUrl) {
+        payload.photoUrl = photoUrl;
+      }
+
+      const created = await createParcel(payload);
       setLastCreatedParcel(created);
       showToast('Parcel saved', { type: 'success' });
       parcelEvents.emitParcelCreated();
@@ -521,7 +567,7 @@ export const CaptureScreen: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [focusField, formState, photoUrl, propertyId, scrollToField]);
+  }, [entryMode, focusField, formState, photoUrl, propertyId, scrollToField]);
 
   const handleViewToday = useCallback(() => {
     navigation.navigate('Today');
@@ -568,7 +614,7 @@ export const CaptureScreen: React.FC = () => {
   const renderCameraStep = () => (
     <View style={[styles.cameraWrapper, { paddingTop: insets.top }]}>
       <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" enableShutterSound={false} />
+        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
         <View style={styles.cameraOverlay}>
           <Text style={[styles.cameraHint, { color: theme.roles.text.onPrimary }]}>Align the label and tap the shutter</Text>
         </View>
@@ -616,6 +662,14 @@ export const CaptureScreen: React.FC = () => {
             />
           )}
         </TouchableOpacity>
+        <Button
+          title="Add manually"
+          onPress={beginManualEntry}
+          variant="secondary"
+          style={styles.manualButton}
+          accessibilityLabel="Add a parcel manually without taking a photo"
+          disabled={isCapturing || isProcessingPhoto}
+        />
       </View>
     </View>
   );
@@ -725,8 +779,14 @@ export const CaptureScreen: React.FC = () => {
         ]}
         contentInsetAdjustmentBehavior="never"
         keyboardShouldPersistTaps="handled">
-        <Text style={[styles.detailsTitle, { color: theme.roles.text.primary }]}>Confirm parcel details</Text>
-        <Text style={[styles.detailsSubtitle, { color: theme.roles.text.secondary }]}>Review the OCR suggestions and update as needed.</Text>
+        <Text style={[styles.detailsTitle, { color: theme.roles.text.primary }]}>
+          {entryMode === 'manual' ? 'Enter parcel details' : 'Confirm parcel details'}
+        </Text>
+        <Text style={[styles.detailsSubtitle, { color: theme.roles.text.secondary }]}>
+          {entryMode === 'manual'
+            ? 'Fill in the parcel information to log it without a photo.'
+            : 'Review the OCR suggestions and update as needed.'}
+        </Text>
         <View style={styles.sectionSpacing} />
         <View style={styles.formFieldsWrapper}>
           <View style={styles.inputGroup} onLayout={handleFieldLayout('trackingNumber')}>
@@ -810,7 +870,12 @@ export const CaptureScreen: React.FC = () => {
         </View>
       </ScrollView>
       <View style={[styles.detailsActions, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <Button title="Back" onPress={() => setStep('preview')} variant="secondary" disabled={isSaving} />
+        <Button
+          title={entryMode === 'manual' ? 'Back to camera' : 'Back'}
+          onPress={entryMode === 'manual' ? returnToCamera : () => setStep('preview')}
+          variant="secondary"
+          disabled={isSaving}
+        />
         <View style={styles.previewSpacing} />
         <Button title="Save parcel" onPress={handleSaveParcel} disabled={isSaving} />
       </View>
@@ -960,6 +1025,10 @@ const styles = StyleSheet.create({
   cameraControls: {
     paddingTop: 12,
     alignItems: 'center',
+  },
+  manualButton: {
+    marginTop: 16,
+    minWidth: 200,
   },
   shutterButton: {
     width: 88,

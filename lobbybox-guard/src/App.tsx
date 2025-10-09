@@ -13,11 +13,13 @@ import {ToastHost} from '@/components/ToastHost';
 
 enableScreens();
 
+const iconFonts = {
+  ...(Ionicons as unknown as {font: Record<string, any>}).font,
+  ...(MaterialCommunityIcons as unknown as {font: Record<string, any>}).font,
+};
+
 const App: React.FC = () => {
-  const [fontsLoaded] = useFonts({
-    ...Ionicons.font,
-    ...MaterialCommunityIcons.font,
-  });
+  const [fontsLoaded] = useFonts(iconFonts);
 
   if (!fontsLoaded) {
     return (
