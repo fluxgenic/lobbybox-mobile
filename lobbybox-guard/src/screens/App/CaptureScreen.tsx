@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -13,24 +13,24 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {CameraView, CameraViewRef, useCameraPermissions} from 'expo-camera';
-import {createUploadTask, getInfoAsync} from 'expo-file-system/legacy';
+import { CameraView, CameraViewRef, useCameraPermissions } from 'expo-camera';
+import { createUploadTask, getInfoAsync } from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {MaterialCommunityIcons} from '@expo/vector-icons';
-import {NavigationProp, useNavigation} from '@react-navigation/native';
-import {ScreenContainer} from '@/components/ScreenContainer';
-import {useThemeContext} from '@/theme';
-import {Button} from '@/components/Button';
-import {ProgressBar} from '@/components/ProgressBar';
-import {useAuth} from '@/context/AuthContext';
-import {createParcel, fetchParcelOcrSuggestions, requestParcelUpload} from '@/api/parcels';
-import {CreateParcelResponse} from '@/api/types';
-import {parseApiError, ParsedApiError} from '@/utils/error';
-import {parseRawTextToFields} from '@/utils/parcelOcrParser';
-import {showErrorToast, showToast} from '@/utils/toast';
-import {parcelEvents} from '@/events/parcelEvents';
-import {AppTabsParamList} from '@/navigation/AppNavigator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { useThemeContext } from '@/theme';
+import { Button } from '@/components/Button';
+import { ProgressBar } from '@/components/ProgressBar';
+import { useAuth } from '@/context/AuthContext';
+import { createParcel, fetchParcelOcrSuggestions, requestParcelUpload } from '@/api/parcels';
+import { CreateParcelResponse } from '@/api/types';
+import { parseApiError, ParsedApiError } from '@/utils/error';
+import { parseRawTextToFields } from '@/utils/parcelOcrParser';
+import { showErrorToast, showToast } from '@/utils/toast';
+import { parcelEvents } from '@/events/parcelEvents';
+import { AppTabsParamList } from '@/navigation/AppNavigator';
 
 const LONGEST_EDGE_TARGET = 1400;
 
@@ -111,7 +111,7 @@ const parseOcrTextSuggestions = (ocrText: string | undefined | null): Partial<Pa
 };
 
 export const CaptureScreen: React.FC = () => {
-  const {theme} = useThemeContext();
+  const { theme } = useThemeContext();
   const navigation = useNavigation<NavigationProp<AppTabsParamList>>();
   const cameraRef = useRef<CameraViewRef>(null);
   const [permission, requestPermission] = useCameraPermissions();
@@ -127,7 +127,7 @@ export const CaptureScreen: React.FC = () => {
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastCreatedParcel, setLastCreatedParcel] = useState<CreateParcelResponse | null>(null);
-  const {user} = useAuth();
+  const { user } = useAuth();
   const propertyId = user?.property?.id ?? user?.tenantId ?? null;
   const scanningProgress = useRef(new Animated.Value(0)).current;
   const scanningAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -181,14 +181,14 @@ export const CaptureScreen: React.FC = () => {
 
   const ensureDimensions = useCallback(async (uri: string, width?: number, height?: number) => {
     if (width && height) {
-      return {width, height};
+      return { width, height };
     }
 
-    return new Promise<{width: number; height: number}>((resolve, reject) => {
+    return new Promise<{ width: number; height: number }>((resolve, reject) => {
       Image.getSize(
         uri,
         (resolvedWidth, resolvedHeight) => {
-          resolve({width: resolvedWidth, height: resolvedHeight});
+          resolve({ width: resolvedWidth, height: resolvedHeight });
         },
         error => reject(error),
       );
@@ -205,16 +205,16 @@ export const CaptureScreen: React.FC = () => {
       const targetHeight = Math.round(resolved.height * resizeRatio);
       const actions = shouldResize
         ? [
-            {
-              resize: {
-                width: targetWidth,
-                height: targetHeight,
-              },
+          {
+            resize: {
+              width: targetWidth,
+              height: targetHeight,
             },
-          ]
+          },
+        ]
         : [];
 
-      let result: {uri: string; width?: number; height?: number} = {uri};
+      let result: { uri: string; width?: number; height?: number } = { uri };
       let manipulated = false;
 
       if (actions.length > 0 && Platform.OS !== 'web') {
@@ -222,7 +222,7 @@ export const CaptureScreen: React.FC = () => {
           try {
             const options: Parameters<typeof ImageManipulator.manipulateAsync>[2] = {
               compress: 0.8,
-              ...(ImageManipulator.SaveFormat?.JPEG ? {format: ImageManipulator.SaveFormat.JPEG} : {}),
+              ...(ImageManipulator.SaveFormat?.JPEG ? { format: ImageManipulator.SaveFormat.JPEG } : {}),
             };
 
             result = await ImageManipulator.manipulateAsync(uri, actions, options);
@@ -300,7 +300,7 @@ export const CaptureScreen: React.FC = () => {
 
     if (!propertyId) {
       console.warn('[CaptureScreen] Unable to determine property while using photo.');
-      showToast('Unable to determine your assigned property.', {type: 'error'});
+      showToast('Unable to determine your assigned property.', { type: 'error' });
       return;
     }
 
@@ -334,7 +334,7 @@ export const CaptureScreen: React.FC = () => {
             'x-ms-blob-type': 'BlockBlob',
           },
         },
-        ({totalBytesSent, totalBytesExpectedToSend}) => {
+        ({ totalBytesSent, totalBytesExpectedToSend }) => {
           if (totalBytesExpectedToSend > 0) {
             const progress = totalBytesSent / totalBytesExpectedToSend;
             setUploadProgress(progress);
@@ -365,25 +365,17 @@ export const CaptureScreen: React.FC = () => {
         const response = await fetchParcelOcrSuggestions(sas.readUrl);
         console.log('[CaptureScreen] Received OCR suggestions', response);
 
-        const parsedFromOcrText = parseOcrTextSuggestions(response.ocrText);
-        const remarksFromApi = [response.unit, response.address]
-          .filter((value): value is string => Boolean(value && value.trim().length > 0))
-          .join('\n');
-
         suggestions = {
-          trackingNumber: response.trackingNumber ?? parsedFromOcrText.trackingNumber ?? '',
-          recipientName: response.customerName ?? parsedFromOcrText.recipientName ?? '',
-          mobileNumber: response.mobileNumber ?? parsedFromOcrText.mobileNumber ?? '',
+          trackingNumber: response.trackingNumber ?? '',
+          recipientName: response.customerName ?? '',
+          mobileNumber: response.mobileNumber ?? '',
           ocrText: response.ocrText ?? '',
-          remarks:
-            parsedFromOcrText.remarks && parsedFromOcrText.remarks.trim().length > 0
-              ? parsedFromOcrText.remarks
-              : remarksFromApi || '',
+          remarks: response.unit
         };
       } catch (error) {
         console.error('[CaptureScreen] Failed to fetch OCR suggestions', error);
         const parsed = parseApiError(error, 'Unable to auto-fill from the photo.');
-        showToast(parsed.message, {type: 'info'});
+        showToast(parsed.message, { type: 'info' });
       }
 
       setFormState(prev => ({
@@ -405,7 +397,7 @@ export const CaptureScreen: React.FC = () => {
 
   const handleSaveParcel = useCallback(async () => {
     if (!propertyId || !photoUrl) {
-      showToast('Missing parcel details. Please try again.', {type: 'error'});
+      showToast('Missing parcel details. Please try again.', { type: 'error' });
       return;
     }
 
@@ -425,7 +417,7 @@ export const CaptureScreen: React.FC = () => {
         collectedAt: collectedAtIso,
       });
       setLastCreatedParcel(created);
-      showToast('Parcel saved', {type: 'success'});
+      showToast('Parcel saved', { type: 'success' });
       parcelEvents.emitParcelCreated();
       setStep('success');
     } catch (error) {
@@ -447,7 +439,7 @@ export const CaptureScreen: React.FC = () => {
       return (
         <View style={styles.centered}>
           <ActivityIndicator color={theme.palette.primary.main} />
-          <Text style={[styles.permissionText, {color: theme.roles.text.secondary}]}>Checking camera access…</Text>
+          <Text style={[styles.permissionText, { color: theme.roles.text.secondary }]}>Checking camera access…</Text>
         </View>
       );
     }
@@ -459,16 +451,16 @@ export const CaptureScreen: React.FC = () => {
     const actionLabel = permission.canAskAgain ? 'Grant camera access' : 'Open settings';
     const actionHandler = permission.canAskAgain
       ? () => {
-          requestPermission();
-        }
+        requestPermission();
+      }
       : () => {
-          Linking.openSettings();
-        };
+        Linking.openSettings();
+      };
 
     return (
       <View style={styles.centered}>
-        <Text style={[styles.permissionTitle, {color: theme.roles.text.primary}]}>Camera access needed</Text>
-        <Text style={[styles.permissionText, {color: theme.roles.text.secondary}]}>
+        <Text style={[styles.permissionTitle, { color: theme.roles.text.primary }]}>Camera access needed</Text>
+        <Text style={[styles.permissionText, { color: theme.roles.text.secondary }]}>
           Allow Lobbybox Guard to use the camera so you can capture parcel photos.
         </Text>
         <Button title={actionLabel} onPress={actionHandler} style={styles.permissionButton} />
@@ -477,11 +469,11 @@ export const CaptureScreen: React.FC = () => {
   }, [permission, requestPermission, theme]);
 
   const renderCameraStep = () => (
-    <View style={[styles.cameraWrapper, {paddingTop: insets.top}]}>
+    <View style={[styles.cameraWrapper, { paddingTop: insets.top }]}>
       <View style={styles.cameraContainer}>
         <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" enableShutterSound={false} />
         <View style={styles.cameraOverlay}>
-          <Text style={[styles.cameraHint, {color: theme.roles.text.onPrimary}]}>Align the label and tap the shutter</Text>
+          <Text style={[styles.cameraHint, { color: theme.roles.text.onPrimary }]}>Align the label and tap the shutter</Text>
         </View>
         {(isCapturing || isProcessingPhoto) && (
           <View style={styles.scannerOverlay} pointerEvents="none">
@@ -503,7 +495,7 @@ export const CaptureScreen: React.FC = () => {
           </View>
         )}
       </View>
-      <View style={[styles.cameraControls, {paddingBottom: Math.max(insets.bottom, 24)}]}>
+      <View style={[styles.cameraControls, { paddingBottom: Math.max(insets.bottom, 24) }]}>
         <TouchableOpacity
           onPress={handleCapture}
           style={[
@@ -538,49 +530,49 @@ export const CaptureScreen: React.FC = () => {
 
     return (
       <KeyboardAvoidingView
-        behavior={Platform.select({ios: 'padding', android: undefined})}
+        behavior={Platform.select({ ios: 'padding', android: undefined })}
         style={styles.flex}
-        keyboardVerticalOffset={Platform.select({ios: 24, android: 0})}>
+        keyboardVerticalOffset={Platform.select({ ios: 24, android: 0 })}>
         <ScrollView contentContainerStyle={styles.previewContent}>
           <Image
-            source={{uri: photo.uri}}
-            style={[styles.previewImage, {aspectRatio: photo.width / photo.height}]}
+            source={{ uri: photo.uri }}
+            style={[styles.previewImage, { aspectRatio: photo.width / photo.height }]}
             resizeMode="contain"
           />
           <View style={styles.previewInfoRow}>
-            <Text style={[styles.previewInfoText, {color: theme.roles.text.secondary}]}>Resolution</Text>
-            <Text style={[styles.previewInfoValue, {color: theme.roles.text.primary}]}> 
+            <Text style={[styles.previewInfoText, { color: theme.roles.text.secondary }]}>Resolution</Text>
+            <Text style={[styles.previewInfoValue, { color: theme.roles.text.primary }]}>
               {photo.width} × {photo.height}
             </Text>
           </View>
           {photo.size ? (
             <View style={styles.previewInfoRow}>
-              <Text style={[styles.previewInfoText, {color: theme.roles.text.secondary}]}>File size</Text>
-              <Text style={[styles.previewInfoValue, {color: theme.roles.text.primary}]}> 
+              <Text style={[styles.previewInfoText, { color: theme.roles.text.secondary }]}>File size</Text>
+              <Text style={[styles.previewInfoValue, { color: theme.roles.text.primary }]}>
                 {(photo.size / 1024).toFixed(0)} KB
               </Text>
             </View>
           ) : null}
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, {color: theme.roles.text.secondary}]}>Remarks</Text>
+            <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Remarks</Text>
             <TextInput
-              style={[styles.textInput, {color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background}]}
+              style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
               placeholder="Add notes about this parcel"
               placeholderTextColor={theme.roles.text.secondary}
               value={formState.remarks}
-              onChangeText={value => setFormState(prev => ({...prev, remarks: value}))}
+              onChangeText={value => setFormState(prev => ({ ...prev, remarks: value }))}
               multiline
               numberOfLines={3}
             />
           </View>
           {uploadError ? (
-            <Text style={[styles.uploadErrorText, {color: theme.roles.status.error}]}>{uploadError.message}</Text>
+            <Text style={[styles.uploadErrorText, { color: theme.roles.status.error }]}>{uploadError.message}</Text>
           ) : null}
           {isUploading ? (
             <View style={styles.uploadProgressWrapper}>
-              <Text style={[styles.uploadLabel, {color: theme.roles.text.secondary}]}>Uploading photo…</Text>
+              <Text style={[styles.uploadLabel, { color: theme.roles.text.secondary }]}>Uploading photo…</Text>
               <ProgressBar progress={uploadProgress} />
-              <Text style={[styles.uploadPercent, {color: theme.roles.text.secondary}]}> 
+              <Text style={[styles.uploadPercent, { color: theme.roles.text.secondary }]}>
                 {Math.round(uploadProgress * 100)}%
               </Text>
             </View>
@@ -607,49 +599,49 @@ export const CaptureScreen: React.FC = () => {
 
   const renderDetailsStep = () => (
     <KeyboardAvoidingView
-      behavior={Platform.select({ios: 'padding', android: undefined})}
+      behavior={Platform.select({ ios: 'padding', android: undefined })}
       style={styles.flex}
-      keyboardVerticalOffset={Platform.select({ios: 24, android: 0})}>
+      keyboardVerticalOffset={Platform.select({ ios: 24, android: 0 })}>
       <ScrollView contentContainerStyle={styles.detailsContent}>
-        <Text style={[styles.detailsTitle, {color: theme.roles.text.primary}]}>Confirm parcel details</Text>
-        <Text style={[styles.detailsSubtitle, {color: theme.roles.text.secondary}]}>Review the OCR suggestions and update as needed.</Text>
+        <Text style={[styles.detailsTitle, { color: theme.roles.text.primary }]}>Confirm parcel details</Text>
+        <Text style={[styles.detailsSubtitle, { color: theme.roles.text.secondary }]}>Review the OCR suggestions and update as needed.</Text>
         <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, {color: theme.roles.text.secondary}]}>Tracking number</Text>
+          <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Tracking number</Text>
           <TextInput
-            style={[styles.textInput, {color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background}]}
+            style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
             value={formState.trackingNumber}
-            onChangeText={value => setFormState(prev => ({...prev, trackingNumber: value}))}
+            onChangeText={value => setFormState(prev => ({ ...prev, trackingNumber: value }))}
             placeholder="Enter tracking number"
             placeholderTextColor={theme.roles.text.secondary}
           />
         </View>
         <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, {color: theme.roles.text.secondary}]}>Recipient name</Text>
+          <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Recipient name</Text>
           <TextInput
-            style={[styles.textInput, {color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background}]}
+            style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
             value={formState.recipientName}
-            onChangeText={value => setFormState(prev => ({...prev, recipientName: value}))}
+            onChangeText={value => setFormState(prev => ({ ...prev, recipientName: value }))}
             placeholder="Enter recipient name"
             placeholderTextColor={theme.roles.text.secondary}
           />
         </View>
         <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, {color: theme.roles.text.secondary}]}>Mobile number</Text>
+          <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Mobile number</Text>
           <TextInput
-            style={[styles.textInput, {color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background}]}
+            style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
             value={formState.mobileNumber}
             keyboardType="phone-pad"
-            onChangeText={value => setFormState(prev => ({...prev, mobileNumber: value}))}
+            onChangeText={value => setFormState(prev => ({ ...prev, mobileNumber: value }))}
             placeholder="Enter mobile number"
             placeholderTextColor={theme.roles.text.secondary}
           />
         </View>
         <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, {color: theme.roles.text.secondary}]}>OCR text</Text>
+          <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>OCR text</Text>
           <TextInput
-            style={[styles.textInputMultiline, {color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background}]}
+            style={[styles.textInputMultiline, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
             value={formState.ocrText}
-            onChangeText={value => setFormState(prev => ({...prev, ocrText: value}))}
+            onChangeText={value => setFormState(prev => ({ ...prev, ocrText: value }))}
             placeholder="Recognized text from the label"
             placeholderTextColor={theme.roles.text.secondary}
             multiline
@@ -657,11 +649,11 @@ export const CaptureScreen: React.FC = () => {
           />
         </View>
         <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, {color: theme.roles.text.secondary}]}>Remarks</Text>
+          <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Remarks</Text>
           <TextInput
-            style={[styles.textInputMultiline, {color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background}]}
+            style={[styles.textInputMultiline, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
             value={formState.remarks}
-            onChangeText={value => setFormState(prev => ({...prev, remarks: value}))}
+            onChangeText={value => setFormState(prev => ({ ...prev, remarks: value }))}
             placeholder="Add any additional notes"
             placeholderTextColor={theme.roles.text.secondary}
             multiline
@@ -669,8 +661,8 @@ export const CaptureScreen: React.FC = () => {
           />
         </View>
         <View style={styles.summaryRow}>
-          <Text style={[styles.summaryLabel, {color: theme.roles.text.secondary}]}>Collected at</Text>
-          <Text style={[styles.summaryValue, {color: theme.roles.text.primary}]}>{formatTimestamp(formState.collectedAt)}</Text>
+          <Text style={[styles.summaryLabel, { color: theme.roles.text.secondary }]}>Collected at</Text>
+          <Text style={[styles.summaryValue, { color: theme.roles.text.primary }]}>{formatTimestamp(formState.collectedAt)}</Text>
         </View>
       </ScrollView>
       <View style={styles.detailsActions}>
@@ -681,7 +673,7 @@ export const CaptureScreen: React.FC = () => {
       {isSaving ? (
         <View style={styles.savingOverlay}>
           <ActivityIndicator color={theme.roles.text.onPrimary} size="large" />
-          <Text style={[styles.savingText, {color: theme.roles.text.onPrimary}]}>Saving parcel…</Text>
+          <Text style={[styles.savingText, { color: theme.roles.text.onPrimary }]}>Saving parcel…</Text>
         </View>
       ) : null}
     </KeyboardAvoidingView>
@@ -689,25 +681,25 @@ export const CaptureScreen: React.FC = () => {
 
   const renderSuccessStep = () => (
     <ScrollView contentContainerStyle={styles.successContent}>
-      <Text style={[styles.successTitle, {color: theme.roles.text.primary}]}>Parcel recorded</Text>
-      <Text style={[styles.successSubtitle, {color: theme.roles.text.secondary}]}>You can capture another or review today's log.</Text>
+      <Text style={[styles.successTitle, { color: theme.roles.text.primary }]}>Parcel recorded</Text>
+      <Text style={[styles.successSubtitle, { color: theme.roles.text.secondary }]}>You can capture another or review today's log.</Text>
       {photo ? (
         <Image
-          source={{uri: photo.uri}}
-          style={[styles.successImage, {aspectRatio: photo.width / photo.height}]}
+          source={{ uri: photo.uri }}
+          style={[styles.successImage, { aspectRatio: photo.width / photo.height }]}
           resizeMode="contain"
         />
       ) : null}
       {lastCreatedParcel ? (
-        <View style={[styles.successSummary, {borderColor: theme.roles.card.border, backgroundColor: theme.roles.card.background}]}> 
+        <View style={[styles.successSummary, { borderColor: theme.roles.card.border, backgroundColor: theme.roles.card.background }]}>
           {lastCreatedParcel.recipientName ? (
-            <Text style={[styles.successSummaryText, {color: theme.roles.text.primary}]}>Recipient: {lastCreatedParcel.recipientName}</Text>
+            <Text style={[styles.successSummaryText, { color: theme.roles.text.primary }]}>Recipient: {lastCreatedParcel.recipientName}</Text>
           ) : null}
           {lastCreatedParcel.trackingNumber ? (
-            <Text style={[styles.successSummaryText, {color: theme.roles.text.primary}]}>Tracking #: {lastCreatedParcel.trackingNumber}</Text>
+            <Text style={[styles.successSummaryText, { color: theme.roles.text.primary }]}>Tracking #: {lastCreatedParcel.trackingNumber}</Text>
           ) : null}
           {lastCreatedParcel.remarks ? (
-            <Text style={[styles.successSummaryText, {color: theme.roles.text.secondary}]}>Remarks: {lastCreatedParcel.remarks}</Text>
+            <Text style={[styles.successSummaryText, { color: theme.roles.text.secondary }]}>Remarks: {lastCreatedParcel.remarks}</Text>
           ) : null}
         </View>
       ) : null}
