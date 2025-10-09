@@ -14,7 +14,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:build && node build-tests/__tests__/parcelFlowUtils.test.js",
+    "test:build": "tsc -p tsconfig.tests.json"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
