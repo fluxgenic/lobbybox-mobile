@@ -505,7 +505,7 @@ export const CaptureScreen: React.FC = () => {
         photoUrl,
         remarks: sanitizeInput(cleanedValues.remarks) ?? null,
         mobileNumber: sanitizeInput(cleanedValues.mobileNumber) ?? null,
-        ocrText: sanitizeInput(formState.ocrText) ?? null,
+        ocrText: '',
         trackingNumber: sanitizeInput(cleanedValues.trackingNumber) ?? null,
         recipientName: sanitizeInput(cleanedValues.recipientName) ?? null,
         collectedAt: collectedAtIso,
