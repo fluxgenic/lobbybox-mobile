@@ -62,8 +62,10 @@ export type CreateParcelResponse = ParcelListItem;
 
 export type ParcelOcrSuggestion = {
   trackingNumber?: string | null;
-  recipientName?: string | null;
+  customerName?: string | null;
   mobileNumber?: string | null;
+  unit?: string | null;
+  address?: string | null;
   ocrText?: string | null;
 };
 
