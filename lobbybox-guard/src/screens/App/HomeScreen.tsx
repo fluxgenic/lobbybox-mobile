@@ -60,6 +60,7 @@ export const HomeScreen: React.FC = () => {
   const [photoPreview, setPhotoPreview] = useState<PhotoPreviewState>({visible: false, uri: null});
 
   const loadCachedData = useCallback(async () => {
+    console.log("getDailyParcels : ",todayIso,propertyId);
     const cached = await parcelsStorage.getDailyParcels(todayIso, propertyId);
     if (cached) {
       setParcels(cached.parcels);
