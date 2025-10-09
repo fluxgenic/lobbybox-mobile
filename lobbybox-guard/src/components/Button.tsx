@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleProp, StyleSheet, Text, TouchableOpacity, TouchableOpacityProps, ViewStyle} from 'react-native';
+import {ActivityIndicator, StyleProp, StyleSheet, Text, TouchableOpacity, TouchableOpacityProps, View, ViewStyle} from 'react-native';
 import {useThemeContext} from '@/theme';
 import type {ThemeRoles} from '@/theme';
 
@@ -9,6 +9,9 @@ type Props = TouchableOpacityProps & {
   title: string;
   variant?: ButtonVariant;
   style?: StyleProp<ViewStyle>;
+  loading?: boolean;
+  loadingText?: string;
+  loadingLabel?: string;
 };
 
 export const Button: React.FC<Props> = ({
@@ -16,13 +19,20 @@ export const Button: React.FC<Props> = ({
   variant = 'primary',
   style,
   disabled,
+  loading = false,
+  loadingText,
+  loadingLabel,
   accessibilityLabel,
   accessibilityHint,
   accessibilityRole,
   ...rest
 }) => {
   const {theme} = useThemeContext();
-  const styles = getStyles(theme.roles, disabled ?? false);
+  const computedDisabled = (disabled ?? false) || loading;
+  const styles = getStyles(theme.roles, computedDisabled);
+  const textColor = getVariantTextColor(theme.roles, variant);
+  const displayText = loading ? loadingText ?? title : title;
+  const buttonLabel = loading ? loadingLabel ?? displayText : accessibilityLabel ?? title;
 
   const containerStyle = [styles.base, styles[variant], style];
   const textStyle = [styles.text, styles[`${variant}Text` as const]];
@@ -31,12 +41,20 @@ export const Button: React.FC<Props> = ({
     <TouchableOpacity
       {...rest}
       style={containerStyle}
-      disabled={disabled}
+      disabled={computedDisabled}
       activeOpacity={0.7}
       accessibilityRole={accessibilityRole ?? 'button'}
-      accessibilityLabel={accessibilityLabel ?? title}
-      accessibilityHint={accessibilityHint}>
-      <Text style={textStyle}>{title}</Text>
+      accessibilityLabel={buttonLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{disabled: computedDisabled, busy: loading}}>
+      {loading ? (
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="small" color={textColor} accessibilityLabel={loadingLabel ?? 'Loading'} style={styles.loader} />
+          {displayText ? <Text style={textStyle}>{displayText}</Text> : null}
+        </View>
+      ) : (
+        <Text style={textStyle}>{displayText}</Text>
+      )}
     </TouchableOpacity>
   );
 };
@@ -76,4 +94,24 @@ const getStyles = (roles: ThemeRoles, disabled: boolean) =>
     ghostText: {
       color: roles.button.ghost.text,
     },
+    loadingContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    loader: {
+      marginRight: 8,
+    },
   });
+
+const getVariantTextColor = (roles: ThemeRoles, variant: ButtonVariant): string => {
+  switch (variant) {
+    case 'secondary':
+      return roles.button.secondary.text;
+    case 'ghost':
+      return roles.button.ghost.text;
+    case 'primary':
+    default:
+      return roles.button.primary.text;
+  }
+};

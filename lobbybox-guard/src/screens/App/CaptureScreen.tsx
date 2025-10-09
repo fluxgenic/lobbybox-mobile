@@ -4,6 +4,7 @@ import {
   Animated,
   Image,
   KeyboardAvoidingView,
+  LayoutChangeEvent,
   Linking,
   Platform,
   ScrollView,
@@ -31,6 +32,12 @@ import { parseRawTextToFields } from '@/utils/parcelOcrParser';
 import { showErrorToast, showToast } from '@/utils/toast';
 import { parcelEvents } from '@/events/parcelEvents';
 import { AppTabsParamList } from '@/navigation/AppNavigator';
+import {
+  ParcelFormErrors,
+  ParcelFormValues,
+  getUsePhotoButtonState,
+  validateParcelForm,
+} from './parcelFlowUtils';
 
 const LONGEST_EDGE_TARGET = 1400;
 
@@ -54,6 +61,8 @@ type ParcelFormState = {
   remarks: string;
   collectedAt: string;
 };
+
+type ParcelFieldKey = keyof ParcelFormValues;
 
 const createBlankFormState = (): ParcelFormState => ({
   trackingNumber: '',
@@ -119,6 +128,7 @@ export const CaptureScreen: React.FC = () => {
   const [step, setStep] = useState<Step>('camera');
   const [photo, setPhoto] = useState<CapturedPhoto | null>(null);
   const [formState, setFormState] = useState<ParcelFormState>(() => createBlankFormState());
+  const [formErrors, setFormErrors] = useState<ParcelFormErrors>({});
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -131,6 +141,12 @@ export const CaptureScreen: React.FC = () => {
   const propertyId = user?.property?.id ?? user?.tenantId ?? null;
   const scanningProgress = useRef(new Animated.Value(0)).current;
   const scanningAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const detailsScrollViewRef = useRef<ScrollView | null>(null);
+  const trackingNumberInputRef = useRef<TextInput | null>(null);
+  const recipientNameInputRef = useRef<TextInput | null>(null);
+  const mobileNumberInputRef = useRef<TextInput | null>(null);
+  const remarksInputRef = useRef<TextInput | null>(null);
+  const fieldLayoutsRef = useRef<Record<ParcelFieldKey, number>>({});
 
   useEffect(() => {
     if (!permission) {
@@ -176,7 +192,59 @@ export const CaptureScreen: React.FC = () => {
     setIsUploading(false);
     setIsSaving(false);
     setFormState(createBlankFormState());
+    setFormErrors({});
     setLastCreatedParcel(null);
+    fieldLayoutsRef.current = {};
+  }, []);
+
+  const handleFieldLayout = useCallback(
+    (field: ParcelFieldKey) => (event: LayoutChangeEvent) => {
+      fieldLayoutsRef.current[field] = event.nativeEvent.layout.y;
+    },
+    [],
+  );
+
+  const scrollToField = useCallback(
+    (field: ParcelFieldKey) => {
+      const offset = fieldLayoutsRef.current[field];
+      if (typeof offset === 'number') {
+        detailsScrollViewRef.current?.scrollTo({ y: Math.max(offset - 16, 0), animated: true });
+      }
+    },
+    [],
+  );
+
+  const focusField = useCallback(
+    (field: ParcelFieldKey) => {
+      switch (field) {
+        case 'trackingNumber':
+          trackingNumberInputRef.current?.focus();
+          break;
+        case 'recipientName':
+          recipientNameInputRef.current?.focus();
+          break;
+        case 'mobileNumber':
+          mobileNumberInputRef.current?.focus();
+          break;
+        case 'remarks':
+          remarksInputRef.current?.focus();
+          break;
+        default:
+          break;
+      }
+    },
+    [],
+  );
+
+  const clearFieldError = useCallback((field: ParcelFieldKey) => {
+    setFormErrors(prev => {
+      if (!prev[field]) {
+        return prev;
+      }
+      const next = {...prev};
+      delete next[field];
+      return next;
+    });
   }, []);
 
   const ensureDimensions = useCallback(async (uri: string, width?: number, height?: number) => {
@@ -384,6 +452,8 @@ export const CaptureScreen: React.FC = () => {
         collectedAt: new Date().toISOString(),
       }));
       setStep('details');
+      setFormErrors({});
+      fieldLayoutsRef.current = {};
       console.log('[CaptureScreen] handleUsePhoto completed successfully.');
     } catch (error) {
       console.error('[CaptureScreen] Upload failed', error);
@@ -401,6 +471,30 @@ export const CaptureScreen: React.FC = () => {
       return;
     }
 
+    const validation = validateParcelForm({
+      trackingNumber: formState.trackingNumber,
+      recipientName: formState.recipientName,
+      mobileNumber: formState.mobileNumber,
+      remarks: formState.remarks,
+    });
+
+    setFormErrors(validation.errors);
+
+    if (!validation.isValid) {
+      const firstInvalid = (['trackingNumber', 'recipientName', 'mobileNumber', 'remarks'] as ParcelFieldKey[]).find(
+        field => Boolean(validation.errors[field]),
+      );
+
+      if (firstInvalid) {
+        scrollToField(firstInvalid);
+        focusField(firstInvalid);
+      }
+      return;
+    }
+
+    const { cleanedValues } = validation;
+    setFormState(prev => ({ ...prev, ...cleanedValues }));
+
     const collectedDate = new Date(formState.collectedAt);
     const collectedAtIso = Number.isNaN(collectedDate.getTime()) ? new Date().toISOString() : collectedDate.toISOString();
 
@@ -409,30 +503,32 @@ export const CaptureScreen: React.FC = () => {
       const created = await createParcel({
         propertyId,
         photoUrl,
-        remarks: sanitizeInput(formState.remarks) ?? null,
-        mobileNumber: sanitizeInput(formState.mobileNumber) ?? null,
+        remarks: sanitizeInput(cleanedValues.remarks) ?? null,
+        mobileNumber: sanitizeInput(cleanedValues.mobileNumber) ?? null,
         ocrText: sanitizeInput(formState.ocrText) ?? null,
-        trackingNumber: sanitizeInput(formState.trackingNumber) ?? null,
-        recipientName: sanitizeInput(formState.recipientName) ?? null,
+        trackingNumber: sanitizeInput(cleanedValues.trackingNumber) ?? null,
+        recipientName: sanitizeInput(cleanedValues.recipientName) ?? null,
         collectedAt: collectedAtIso,
       });
       setLastCreatedParcel(created);
       showToast('Parcel saved', { type: 'success' });
       parcelEvents.emitParcelCreated();
       setStep('success');
+      setFormErrors({});
     } catch (error) {
       const parsed = parseApiError(error, 'Unable to save parcel.');
       showErrorToast(parsed);
     } finally {
       setIsSaving(false);
     }
-  }, [formState, photoUrl, propertyId]);
+  }, [focusField, formState, photoUrl, propertyId, scrollToField]);
 
   const handleViewToday = useCallback(() => {
     navigation.navigate('Today');
   }, [navigation]);
 
   const canRetryUpload = Boolean(uploadError) && !isUploading;
+  const usePhotoButtonState = useMemo(() => getUsePhotoButtonState({ isUploading }), [isUploading]);
 
   const permissionStatusView = useMemo(() => {
     if (!permission) {
@@ -533,7 +629,9 @@ export const CaptureScreen: React.FC = () => {
         behavior={Platform.select({ ios: 'padding', android: undefined })}
         style={styles.flex}
         keyboardVerticalOffset={Platform.select({ ios: 24, android: 0 })}>
-        <ScrollView contentContainerStyle={styles.previewContent}>
+        <ScrollView
+          contentContainerStyle={[styles.previewContent, { paddingBottom: 24 + Math.max(insets.bottom - 8, 0) }]}
+          keyboardShouldPersistTaps="handled">
           <Image
             source={{ uri: photo.uri }}
             style={[styles.previewImage, { aspectRatio: photo.width / photo.height }]}
@@ -554,13 +652,16 @@ export const CaptureScreen: React.FC = () => {
             </View>
           ) : null}
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Remarks</Text>
+            <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Remark/Unit</Text>
             <TextInput
               style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
-              placeholder="Add notes about this parcel"
+              placeholder="Add any remark or unit (e.g., C-28-12)"
               placeholderTextColor={theme.roles.text.secondary}
               value={formState.remarks}
-              onChangeText={value => setFormState(prev => ({ ...prev, remarks: value }))}
+              onChangeText={value => {
+                setFormState(prev => ({ ...prev, remarks: value }));
+                clearFieldError('remarks');
+              }}
               multiline
               numberOfLines={3}
             />
@@ -578,13 +679,16 @@ export const CaptureScreen: React.FC = () => {
             </View>
           ) : null}
         </ScrollView>
-        <View style={styles.previewActions}>
+        <View style={[styles.previewActions, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <Button title="Retake" onPress={resetFlow} variant="secondary" disabled={isUploading} />
           <View style={styles.previewSpacing} />
           <Button
             title="Use photo"
             onPress={handleUsePhoto}
-            disabled={isUploading}
+            disabled={usePhotoButtonState.disabled}
+            loading={usePhotoButtonState.showLoader}
+            loadingText="Processing…"
+            loadingLabel="Processing photo…"
             accessibilityLabel="Use this photo and continue"
           />
         </View>
@@ -602,70 +706,95 @@ export const CaptureScreen: React.FC = () => {
       behavior={Platform.select({ ios: 'padding', android: undefined })}
       style={styles.flex}
       keyboardVerticalOffset={Platform.select({ ios: 24, android: 0 })}>
-      <ScrollView contentContainerStyle={styles.detailsContent}>
+      <ScrollView
+        ref={detailsScrollViewRef}
+        contentContainerStyle={[styles.detailsContent, { paddingBottom: 32 + Math.max(insets.bottom - 12, 0) }]}
+        keyboardShouldPersistTaps="handled">
         <Text style={[styles.detailsTitle, { color: theme.roles.text.primary }]}>Confirm parcel details</Text>
         <Text style={[styles.detailsSubtitle, { color: theme.roles.text.secondary }]}>Review the OCR suggestions and update as needed.</Text>
-        <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Tracking number</Text>
-          <TextInput
-            style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
-            value={formState.trackingNumber}
-            onChangeText={value => setFormState(prev => ({ ...prev, trackingNumber: value }))}
-            placeholder="Enter tracking number"
-            placeholderTextColor={theme.roles.text.secondary}
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Recipient name</Text>
-          <TextInput
-            style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
-            value={formState.recipientName}
-            onChangeText={value => setFormState(prev => ({ ...prev, recipientName: value }))}
-            placeholder="Enter recipient name"
-            placeholderTextColor={theme.roles.text.secondary}
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Mobile number</Text>
-          <TextInput
-            style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
-            value={formState.mobileNumber}
-            keyboardType="phone-pad"
-            onChangeText={value => setFormState(prev => ({ ...prev, mobileNumber: value }))}
-            placeholder="Enter mobile number"
-            placeholderTextColor={theme.roles.text.secondary}
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>OCR text</Text>
-          <TextInput
-            style={[styles.textInputMultiline, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
-            value={formState.ocrText}
-            onChangeText={value => setFormState(prev => ({ ...prev, ocrText: value }))}
-            placeholder="Recognized text from the label"
-            placeholderTextColor={theme.roles.text.secondary}
-            multiline
-            numberOfLines={4}
-          />
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Remarks</Text>
-          <TextInput
-            style={[styles.textInputMultiline, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
-            value={formState.remarks}
-            onChangeText={value => setFormState(prev => ({ ...prev, remarks: value }))}
-            placeholder="Add any additional notes"
-            placeholderTextColor={theme.roles.text.secondary}
-            multiline
-            numberOfLines={3}
-          />
+        <View style={styles.sectionSpacing} />
+        <View style={styles.formFieldsWrapper}>
+          <View style={styles.inputGroup} onLayout={handleFieldLayout('trackingNumber')}>
+            <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Tracking number</Text>
+            <TextInput
+              ref={trackingNumberInputRef}
+              style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
+              value={formState.trackingNumber}
+              onChangeText={value => {
+                setFormState(prev => ({ ...prev, trackingNumber: value }));
+                clearFieldError('trackingNumber');
+              }}
+              placeholder="Enter tracking number"
+              placeholderTextColor={theme.roles.text.secondary}
+              returnKeyType="next"
+            />
+            {formErrors.trackingNumber ? (
+              <Text style={[styles.errorText, { color: theme.roles.status.error }]}>{formErrors.trackingNumber}</Text>
+            ) : null}
+          </View>
+          <View style={styles.inputGroup} onLayout={handleFieldLayout('recipientName')}>
+            <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Recipient name</Text>
+            <TextInput
+              ref={recipientNameInputRef}
+              style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
+              value={formState.recipientName}
+              onChangeText={value => {
+                setFormState(prev => ({ ...prev, recipientName: value }));
+                clearFieldError('recipientName');
+              }}
+              placeholder="Enter recipient name"
+              placeholderTextColor={theme.roles.text.secondary}
+              returnKeyType="next"
+            />
+            {formErrors.recipientName ? (
+              <Text style={[styles.errorText, { color: theme.roles.status.error }]}>{formErrors.recipientName}</Text>
+            ) : null}
+          </View>
+          <View style={styles.inputGroup} onLayout={handleFieldLayout('mobileNumber')}>
+            <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Mobile number</Text>
+            <TextInput
+              ref={mobileNumberInputRef}
+              style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
+              value={formState.mobileNumber}
+              keyboardType="phone-pad"
+              onChangeText={value => {
+                setFormState(prev => ({ ...prev, mobileNumber: value }));
+                clearFieldError('mobileNumber');
+              }}
+              placeholder="Enter mobile number"
+              placeholderTextColor={theme.roles.text.secondary}
+              returnKeyType="next"
+            />
+            {formErrors.mobileNumber ? (
+              <Text style={[styles.errorText, { color: theme.roles.status.error }]}>{formErrors.mobileNumber}</Text>
+            ) : null}
+          </View>
+          <View style={styles.inputGroup} onLayout={handleFieldLayout('remarks')}>
+            <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Remark/Unit</Text>
+            <TextInput
+              ref={remarksInputRef}
+              style={[styles.textInputMultiline, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
+              value={formState.remarks}
+              onChangeText={value => {
+                setFormState(prev => ({ ...prev, remarks: value }));
+                clearFieldError('remarks');
+              }}
+              placeholder="Add any remark or unit (e.g., C-28-12)"
+              placeholderTextColor={theme.roles.text.secondary}
+              multiline
+              numberOfLines={3}
+            />
+            {formErrors.remarks ? (
+              <Text style={[styles.errorText, { color: theme.roles.status.error }]}>{formErrors.remarks}</Text>
+            ) : null}
+          </View>
         </View>
         <View style={styles.summaryRow}>
           <Text style={[styles.summaryLabel, { color: theme.roles.text.secondary }]}>Collected at</Text>
           <Text style={[styles.summaryValue, { color: theme.roles.text.primary }]}>{formatTimestamp(formState.collectedAt)}</Text>
         </View>
       </ScrollView>
-      <View style={styles.detailsActions}>
+      <View style={[styles.detailsActions, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <Button title="Back" onPress={() => setStep('preview')} variant="secondary" disabled={isSaving} />
         <View style={styles.previewSpacing} />
         <Button title="Save parcel" onPress={handleSaveParcel} disabled={isSaving} />
@@ -821,7 +950,10 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   previewContent: {
-    padding: 24,
+    flexGrow: 1,
+    paddingTop: 8,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   previewImage: {
     width: '100%',
@@ -840,8 +972,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  sectionSpacing: {
+    height: 8,
+  },
+  formFieldsWrapper: {
+    width: '100%',
+  },
   inputGroup: {
-    marginTop: 20,
+    marginTop: 16,
   },
   inputLabel: {
     fontSize: 13,
@@ -865,9 +1003,15 @@ const styles = StyleSheet.create({
     minHeight: 110,
     textAlignVertical: 'top',
   },
+  errorText: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   previewActions: {
     flexDirection: 'row',
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 16,
   },
   previewSpacing: {
     width: 12,
@@ -894,7 +1038,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   detailsContent: {
-    padding: 24,
+    flexGrow: 1,
+    paddingTop: 8,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
   detailsTitle: {
     fontSize: 22,
@@ -907,7 +1054,8 @@ const styles = StyleSheet.create({
   },
   detailsActions: {
     flexDirection: 'row',
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 16,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -933,7 +1081,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   successContent: {
-    padding: 24,
+    flexGrow: 1,
+    paddingTop: 8,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
     alignItems: 'center',
   },
   successTitle: {
