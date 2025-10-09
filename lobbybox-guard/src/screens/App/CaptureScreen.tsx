@@ -361,18 +361,24 @@ export const CaptureScreen: React.FC = () => {
 
       let suggestions: Partial<ParcelFormState> = {};
       try {
-        console.log('[CaptureScreen] Requesting OCR suggestions for uploaded photo.',sas.readUrl);
+        console.log('[CaptureScreen] Requesting OCR suggestions for uploaded photo.', sas.readUrl);
         const response = await fetchParcelOcrSuggestions(sas.readUrl);
         console.log('[CaptureScreen] Received OCR suggestions', response);
 
         const parsedFromOcrText = parseOcrTextSuggestions(response.ocrText);
+        const remarksFromApi = [response.unit, response.address]
+          .filter((value): value is string => Boolean(value && value.trim().length > 0))
+          .join('\n');
 
         suggestions = {
           trackingNumber: response.trackingNumber ?? parsedFromOcrText.trackingNumber ?? '',
-          recipientName: response.recipientName ?? parsedFromOcrText.recipientName ?? '',
+          recipientName: response.customerName ?? parsedFromOcrText.recipientName ?? '',
           mobileNumber: response.mobileNumber ?? parsedFromOcrText.mobileNumber ?? '',
           ocrText: response.ocrText ?? '',
-          remarks: parsedFromOcrText.remarks ?? '',
+          remarks:
+            parsedFromOcrText.remarks && parsedFromOcrText.remarks.trim().length > 0
+              ? parsedFromOcrText.remarks
+              : remarksFromApi || '',
         };
       } catch (error) {
         console.error('[CaptureScreen] Failed to fetch OCR suggestions', error);
