@@ -11,7 +11,8 @@ type CachedDailyParcels = {
 const STORAGE_PREFIX = 'lobbybox_guard_parcels_daily_';
 
 const buildKey = (date: string, propertyId?: string | null) => {
-  const suffix = propertyId ? `${propertyId}` : 'default';
+  const hasPropertyId = propertyId !== null && propertyId !== undefined && `${propertyId}`.length > 0;
+  const suffix = hasPropertyId ? String(propertyId) : 'default';
   return `${STORAGE_PREFIX}${date}_${suffix}`;
 };
 
