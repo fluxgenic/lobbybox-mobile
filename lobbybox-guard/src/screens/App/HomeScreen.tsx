@@ -24,7 +24,11 @@ import {parseApiError, ParsedApiError} from '@/utils/error';
 import {showErrorToast, showToast} from '@/utils/toast';
 import {parcelEvents} from '@/events/parcelEvents';
 
-const getTodayIsoDate = () => new Date().toISOString().split('T')[0];
+const getTodayIsoDate = () => {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().split('T')[0];
+};
 
 const formatTime = (value?: string | null) => {
   if (!value) {
@@ -50,6 +54,7 @@ export const HomeScreen: React.FC = () => {
   const {isOffline} = useNetworkStatus();
   const todayIso = getTodayIsoDate();
   const propertyId = user?.property?.id ?? user?.tenantId ?? null;
+  const userId = user?.id ?? null;
 
   const [parcels, setParcels] = useState<ParcelListItem[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
@@ -60,7 +65,7 @@ export const HomeScreen: React.FC = () => {
   const [photoPreview, setPhotoPreview] = useState<PhotoPreviewState>({visible: false, uri: null});
 
   const loadCachedData = useCallback(async () => {
-    console.log("getDailyParcels : ",todayIso,propertyId);
+    console.log('[HomeScreen] Loading cached parcels', {date: todayIso, propertyId});
     const cached = await parcelsStorage.getDailyParcels(todayIso, propertyId);
     if (cached) {
       setParcels(cached.parcels);
@@ -86,7 +91,7 @@ export const HomeScreen: React.FC = () => {
       }
 
       try {
-        const result = await fetchParcelsForDate(todayIso, propertyId);
+        const result = await fetchParcelsForDate(todayIso, propertyId, userId);
         const updatedAtIso = new Date().toISOString();
         setParcels(result);
         setLastUpdatedAt(new Date(updatedAtIso));
@@ -110,7 +115,7 @@ export const HomeScreen: React.FC = () => {
         }
       }
     },
-    [isOffline, loadCachedData, propertyId, todayIso],
+    [isOffline, loadCachedData, propertyId, todayIso, userId],
   );
 
   useEffect(() => {
@@ -177,14 +182,22 @@ export const HomeScreen: React.FC = () => {
   const statusText = isOffline ? 'Offline — showing cached data' : 'Live data';
   const statusColor = isOffline ? theme.roles.status.error : theme.roles.status.success;
 
-  const openPhotoPreview = useCallback((parcel: ParcelListItem) => {
-    setPhotoPreview({
-      visible: true,
-      uri: parcel.photoUrl,
-      recipient: parcel.recipientName,
-      tracking: parcel.trackingNumber,
-    });
-  }, []);
+  const openPhotoPreview = useCallback(
+    (parcel: ParcelListItem) => {
+      if (!parcel.photoUrl) {
+        showToast('No photo available for this parcel.', {type: 'info'});
+        return;
+      }
+
+      setPhotoPreview({
+        visible: true,
+        uri: parcel.photoUrl,
+        recipient: parcel.recipientName,
+        tracking: parcel.trackingNumber,
+      });
+    },
+    [showToast],
+  );
 
   const closePhotoPreview = useCallback(() => {
     setPhotoPreview(prev => ({...prev, visible: false}));
@@ -194,6 +207,9 @@ export const HomeScreen: React.FC = () => {
     const remarks = parcel.remarks?.trim();
     const tracking = parcel.trackingNumber?.trim();
     const recipient = parcel.recipientName?.trim();
+    const propertyName = parcel.propertyName?.trim() ?? '—';
+    const tenantName = parcel.tenantName?.trim() ?? '—';
+    const hasPhoto = Boolean(parcel.photoUrl);
 
     return (
       <View
@@ -205,10 +221,16 @@ export const HomeScreen: React.FC = () => {
         ]}>
         <View style={styles.parcelHeader}>
           <Text style={[styles.parcelTime, {color: theme.roles.text.secondary}]}>Collected {formatTime(parcel.collectedAt)}</Text>
-          <TouchableOpacity onPress={() => openPhotoPreview(parcel)} accessibilityRole="button">
-            <Text style={[styles.viewPhoto, {color: theme.palette.primary.main}]}>View photo</Text>
-          </TouchableOpacity>
+          {hasPhoto ? (
+            <TouchableOpacity onPress={() => openPhotoPreview(parcel)} accessibilityRole="button">
+              <Text style={[styles.viewPhoto, {color: theme.palette.primary.main}]}>View photo</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.parcelManualTag, {color: theme.roles.text.secondary}]}>Manual entry</Text>
+          )}
         </View>
+        <Text style={[styles.parcelMeta, {color: theme.roles.text.primary}]}>Property: {propertyName}</Text>
+        <Text style={[styles.parcelMeta, {color: theme.roles.text.primary}]}>Tenant: {tenantName}</Text>
         {tracking ? (
           <Text style={[styles.parcelPrimary, {color: theme.roles.text.primary}]}>Tracking #: {tracking}</Text>
         ) : null}
@@ -397,8 +419,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  parcelManualTag: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   parcelPrimary: {
     fontSize: 15,
+    marginTop: 4,
+  },
+  parcelMeta: {
+    fontSize: 14,
     marginTop: 4,
   },
   parcelRemarks: {

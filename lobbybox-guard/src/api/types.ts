@@ -26,7 +26,7 @@ export type DailyParcelMetric = {
 
 export type ParcelListItem = {
   id: string;
-  photoUrl: string;
+  photoUrl?: string | null;
   remarks?: string | null;
   mobileNumber?: string | null;
   ocrText?: string | null;
@@ -34,6 +34,8 @@ export type ParcelListItem = {
   recipientName?: string | null;
   collectedAt?: string | null;
   createdAt?: string | null;
+  propertyName?: string | null;
+  tenantName?: string | null;
 };
 
 export type ParcelUploadRequest = {
@@ -49,7 +51,7 @@ export type ParcelUploadResponse = {
 
 export type CreateParcelRequest = {
   propertyId: string;
-  photoUrl: string;
+  photoUrl?: string | null;
   remarks?: string | null;
   mobileNumber?: string | null;
   ocrText?: string | null;

@@ -11,14 +11,40 @@ import {
 export const fetchParcelsForDate = async (
   date: string,
   propertyId?: string | null,
+  userId?: string | null,
 ): Promise<ParcelListItem[]> => {
-  const {data} = await api.get<ParcelListItem[]>('/parcels', {
-    params: {
-      date,
-      propertyId,
-    },
-  });
-  return data;
+  const requestContext = {
+    date,
+    propertyId: propertyId ?? null,
+    userId: userId ?? null,
+    timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+    requestedAt: new Date().toISOString(),
+  };
+
+  console.log('[api/parcels] fetchParcelsForDate request', requestContext);
+
+  try {
+    const {data} = await api.get<ParcelListItem[]>('/parcels', {
+      params: {
+        date,
+        propertyId,
+      },
+    });
+
+    console.log('[api/parcels] fetchParcelsForDate response', {
+      ...requestContext,
+      responseCount: data.length,
+      sampleParcelIds: data.slice(0, 3).map(parcel => parcel.id),
+    });
+
+    return data;
+  } catch (error) {
+    console.error('[api/parcels] fetchParcelsForDate error', {
+      ...requestContext,
+      error,
+    });
+    throw error;
+  }
 };
 
 export const requestParcelUpload = async (): Promise<ParcelUploadResponse> => {
