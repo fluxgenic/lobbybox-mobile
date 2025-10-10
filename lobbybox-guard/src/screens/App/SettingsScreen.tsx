@@ -211,6 +211,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 24,
+    margin:10
   },
   profileCard: {
     flexDirection: 'row',
