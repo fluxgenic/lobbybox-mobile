@@ -352,19 +352,27 @@ export const HomeScreen: React.FC = () => {
                   <Text style={[styles.summaryPropertyValue, {color: theme.palette.secondary.contrastText}]}>{propertyDisplay}</Text>
                 </View>
               ) : null}
-              <View style={styles.summaryMetricsRow}>
-                <View style={[styles.summaryMetric, {backgroundColor: summaryAccent}]}> 
-                  <Text style={[styles.summaryMetricLabel, {color: theme.palette.secondary.contrastText}]}>Logged today</Text>
-                  <Text style={[styles.summaryMetricValue, {color: theme.palette.secondary.contrastText}]}>{parcels.length}</Text>
-                </View>
-                <View style={[styles.summaryMetric, {backgroundColor: summaryAccent}]}> 
-                  <Text style={[styles.summaryMetricLabel, {color: theme.palette.secondary.contrastText}]}>Status</Text>
-                  <Text style={[styles.summaryMetricValue, {color: theme.palette.secondary.contrastText}]}>{statusText}</Text>
-                </View>
-                <View style={[styles.summaryMetric, {backgroundColor: summaryAccent}]}> 
-                  <Text style={[styles.summaryMetricLabel, {color: theme.palette.secondary.contrastText}]}>Last updated</Text>
-                  <Text style={[styles.summaryMetricValue, {color: theme.palette.secondary.contrastText}]}>{lastUpdatedLabel}</Text>
-                </View>
+              <View style={styles.summaryMetricsList}>
+                {[{label: 'Logged today', value: parcels.length, highlight: true},
+                  {label: 'Status', value: statusText},
+                  {label: 'Last updated', value: lastUpdatedLabel}].map(metric => (
+                  <View
+                    key={metric.label}
+                    style={[styles.summaryMetricRow, metric.highlight ? {backgroundColor: summaryAccent} : null]}
+                  >
+                    <Text style={[styles.summaryMetricLabel, {color: theme.palette.secondary.contrastText}]}>
+                      {metric.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.summaryMetricValue,
+                        metric.highlight ? styles.summaryMetricValueHighlight : null,
+                        {color: theme.palette.secondary.contrastText},
+                      ]}>
+                      {metric.value}
+                    </Text>
+                  </View>
+                ))}
               </View>
               {error ? (
                 <View style={[styles.summaryErrorCard, {borderColor: summaryAccent}]}> 
@@ -485,30 +493,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
   },
-  summaryMetricsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  summaryMetricsList: {
     marginTop: 16,
   },
-  summaryMetric: {
-    borderRadius: 16,
-    paddingVertical: 14,
+  summaryMetricRow: {
+    borderRadius: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
-    minWidth: 120,
   },
   summaryMetricLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    fontSize: 13,
     opacity: 0.85,
   },
   summaryMetricValue: {
     fontSize: 18,
-    fontWeight: '700',
-    marginTop: 6,
+    fontWeight: '600',
     lineHeight: 22,
+  },
+  summaryMetricValueHighlight: {
+    fontSize: 22,
+    fontWeight: '700',
   },
   summaryErrorCard: {
     borderRadius: 14,

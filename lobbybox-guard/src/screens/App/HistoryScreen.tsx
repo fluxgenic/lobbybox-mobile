@@ -272,23 +272,25 @@ export const HistoryScreen: React.FC = () => {
               <Text style={[styles.overviewPropertyValue, {color: theme.roles.text.onPrimary}]}>{propertyName}</Text>
             </View>
           ) : null}
-          <View style={styles.overviewMetricsRow}>
-            <View style={[styles.overviewMetric, {backgroundColor: accent}]}> 
-              <Text style={[styles.overviewMetricLabel, {color: theme.roles.text.onPrimary}]}>Total records</Text>
-              <Text style={[styles.overviewMetricValue, {color: theme.roles.text.onPrimary}]}> 
-                {total !== null ? total.toLocaleString() : '—'}
-              </Text>
-            </View>
-            <View style={[styles.overviewMetric, {backgroundColor: accent}]}> 
-              <Text style={[styles.overviewMetricLabel, {color: theme.roles.text.onPrimary}]}>Showing now</Text>
-              <Text style={[styles.overviewMetricValue, {color: theme.roles.text.onPrimary}]}> 
-                {entries.length.toLocaleString()}
-              </Text>
-            </View>
-            <View style={[styles.overviewMetric, {backgroundColor: accent}]}> 
-              <Text style={[styles.overviewMetricLabel, {color: theme.roles.text.onPrimary}]}>Last updated</Text>
-              <Text style={[styles.overviewMetricValue, {color: theme.roles.text.onPrimary}]}>{lastUpdatedLabel}</Text>
-            </View>
+          <View style={styles.overviewMetricsList}>
+            {[{label: 'Total records', value: total !== null ? total.toLocaleString() : '—', highlight: true},
+              {label: 'Showing now', value: entries.length.toLocaleString()},
+              {label: 'Last updated', value: lastUpdatedLabel}].map(metric => (
+              <View
+                key={metric.label}
+                style={[styles.overviewMetricRow, metric.highlight ? {backgroundColor: accent} : null]}
+              >
+                <Text style={[styles.overviewMetricLabel, {color: theme.roles.text.onPrimary}]}>{metric.label}</Text>
+                <Text
+                  style={[
+                    styles.overviewMetricValue,
+                    metric.highlight ? styles.overviewMetricValueHighlight : null,
+                    {color: theme.roles.text.onPrimary},
+                  ]}>
+                  {metric.value}
+                </Text>
+              </View>
+            ))}
           </View>
           <View style={styles.overviewActions}>
             <TouchableOpacity
@@ -609,29 +611,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
   },
-  overviewMetricsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  overviewMetricsList: {
     marginTop: 16,
   },
-  overviewMetric: {
-    borderRadius: 16,
-    paddingVertical: 14,
+  overviewMetricRow: {
+    borderRadius: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
-    minWidth: 120,
   },
   overviewMetricLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    opacity: 0.8,
+    fontSize: 13,
+    opacity: 0.85,
   },
   overviewMetricValue: {
     fontSize: 18,
+    fontWeight: '600',
+  },
+  overviewMetricValueHighlight: {
+    fontSize: 22,
     fontWeight: '700',
-    marginTop: 6,
   },
   overviewActions: {
     marginTop: 12,
