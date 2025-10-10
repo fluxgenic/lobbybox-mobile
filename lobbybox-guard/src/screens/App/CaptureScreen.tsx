@@ -614,6 +614,11 @@ export const CaptureScreen: React.FC = () => {
     );
   }, [permission, requestPermission, theme]);
 
+  const shutterIconColor = useMemo(
+    () => (theme.mode === 'light' ? theme.palette.secondary.contrastText : theme.roles.text.primary),
+    [theme],
+  );
+
   const topContentPadding = Math.max(8 - insets.top, 0);
   const renderCameraStep = () => (
     <View style={[styles.cameraWrapper, { paddingTop: insets.top }]}>
@@ -656,12 +661,12 @@ export const CaptureScreen: React.FC = () => {
           accessibilityLabel="Capture parcel photo"
           disabled={isCapturing || isProcessingPhoto}>
           {isCapturing || isProcessingPhoto ? (
-            <ActivityIndicator color={theme.roles.text.primary} />
+            <ActivityIndicator color={shutterIconColor} />
           ) : (
             <MaterialCommunityIcons
               name="camera-iris"
               size={38}
-              color={theme.roles.text.primary}
+              color={shutterIconColor}
               style={styles.shutterIcon}
             />
           )}
