@@ -207,8 +207,8 @@ export const HomeScreen: React.FC = () => {
     const remarks = parcel.remarks?.trim();
     const tracking = parcel.trackingNumber?.trim();
     const recipient = parcel.recipientName?.trim();
-    const propertyName = parcel.propertyName?.trim() ?? '—';
-    const tenantName = parcel.tenantName?.trim() ?? '—';
+    const propertyName = parcel.propertyName?.trim();
+    const mobileNumber = parcel.mobileNumber?.trim();
     const hasPhoto = Boolean(parcel.photoUrl);
 
     return (
@@ -229,13 +229,17 @@ export const HomeScreen: React.FC = () => {
             <Text style={[styles.parcelManualTag, {color: theme.roles.text.secondary}]}>Manual entry</Text>
           )}
         </View>
-        <Text style={[styles.parcelMeta, {color: theme.roles.text.primary}]}>Property: {propertyName}</Text>
-        <Text style={[styles.parcelMeta, {color: theme.roles.text.primary}]}>Tenant: {tenantName}</Text>
+        {propertyName ? (
+          <Text style={[styles.parcelMeta, {color: theme.roles.text.primary}]}>Property: {propertyName}</Text>
+        ) : null}
         {tracking ? (
           <Text style={[styles.parcelPrimary, {color: theme.roles.text.primary}]}>Tracking #: {tracking}</Text>
         ) : null}
         {recipient ? (
           <Text style={[styles.parcelPrimary, {color: theme.roles.text.primary}]}>Recipient: {recipient}</Text>
+        ) : null}
+        {mobileNumber ? (
+          <Text style={[styles.parcelPrimary, {color: theme.roles.text.primary}]}>Contact: {mobileNumber}</Text>
         ) : null}
         {remarks ? (
           <Text style={[styles.parcelRemarks, {color: theme.roles.text.secondary}]}>Remarks: {remarks}</Text>
