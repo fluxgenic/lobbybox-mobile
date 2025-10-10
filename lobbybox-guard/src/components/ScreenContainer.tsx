@@ -24,6 +24,8 @@ export const ScreenContainer: React.FC<Props> = ({children, style, edges}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 0,
   },
 });

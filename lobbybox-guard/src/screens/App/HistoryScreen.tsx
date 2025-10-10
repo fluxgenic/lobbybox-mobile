@@ -426,14 +426,25 @@ export const HistoryScreen: React.FC = () => {
           </View>
           {details.length > 0 ? (
             <View style={styles.detailGrid}>
-              {details.map((detail, index) => (
-                <View
-                  key={`${detail.label}-${index}`}
-                  style={[styles.detailPill, {backgroundColor: detailBackground, borderColor: theme.roles.card.border}]}>
-                  <Text style={[styles.detailLabel, {color: theme.roles.text.secondary}]}>{detail.label}</Text>
-                  <Text style={[styles.detailValue, {color: theme.roles.text.primary}]}>{detail.value}</Text>
-                </View>
-              ))}
+              {details.map((detail, index) => {
+                const isHighlightedValue = detail.label.toLowerCase().includes('tracking');
+
+                return (
+                  <View
+                    key={`${detail.label}-${index}`}
+                    style={[styles.detailPill, {backgroundColor: detailBackground, borderColor: theme.roles.card.border}]}> 
+                    <Text style={[styles.detailLabel, {color: theme.roles.text.secondary}]}>{detail.label}</Text>
+                    <Text
+                      style={[
+                        styles.detailValue,
+                        {color: theme.roles.text.primary},
+                        isHighlightedValue ? styles.detailValueHighlight : null,
+                      ]}>
+                      {detail.value}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           ) : null}
           <View style={[styles.cardFooter, {borderTopColor: theme.roles.card.border}]}> 
@@ -634,7 +645,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   cardSubtitle: {
     fontSize: 14,
@@ -692,16 +703,28 @@ const styles = StyleSheet.create({
     marginRight: 12,
     marginBottom: 12,
     borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minWidth: '48%',
+    flexGrow: 1,
+    flexBasis: '48%',
   },
   detailLabel: {
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginBottom: 4,
+    marginRight: 12,
+    flexShrink: 0,
   },
   detailValue: {
     fontSize: 15,
     lineHeight: 21,
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+  detailValueHighlight: {
+    fontWeight: '700',
   },
   cardFooter: {
     marginTop: 16,
