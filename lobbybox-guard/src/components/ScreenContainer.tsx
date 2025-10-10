@@ -15,7 +15,7 @@ export const ScreenContainer: React.FC<Props> = ({children, style, edges}) => {
   return (
     <SafeAreaView
       style={[styles.container, {backgroundColor: theme.roles.background.default}, style]}
-      edges={edges ?? ['top', 'right', 'bottom', 'left']}>
+      edges={edges ?? ['right',  'left']}>
       {children}
     </SafeAreaView>
   );
@@ -24,8 +24,5 @@ export const ScreenContainer: React.FC<Props> = ({children, style, edges}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: 0,
   },
 });

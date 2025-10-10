@@ -552,6 +552,8 @@ export const HistoryScreen: React.FC = () => {
 const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 48,
+    paddingLeft:10,
+    paddingRight:10
   },
   header: {
     marginBottom: 24,

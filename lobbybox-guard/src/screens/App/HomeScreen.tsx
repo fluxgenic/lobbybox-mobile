@@ -334,6 +334,8 @@ const styles = StyleSheet.create({
   },
   wrapper: {
     flex: 1,
+    paddingLeft:10,
+    paddingRight:10
   },
   scrollContent: {
     flexGrow: 1,

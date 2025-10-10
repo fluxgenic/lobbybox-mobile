@@ -960,7 +960,6 @@ export const CaptureScreen: React.FC = () => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    padding: 0,
   },
   flex: {
     flex: 1,
