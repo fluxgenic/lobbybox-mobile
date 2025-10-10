@@ -378,7 +378,6 @@ export const HistoryScreen: React.FC = () => {
       const remarks = item.remarks?.trim();
       const contact = item.mobileNumber?.trim();
       const collectedAt = formatDateTime(item.collectedAt ?? item.createdAt);
-      const property = item.propertyName?.trim() || propertyName;
       const tenantName = item.tenantName?.trim();
       const trimmedPhotoUrl = item.photoUrl?.trim() ?? '';
       const logisticSource = item.logisticSource?.trim();
@@ -414,9 +413,6 @@ export const HistoryScreen: React.FC = () => {
         },
       ];
 
-      if (property) {
-        infoRows.push({label: 'Property', value: property});
-      }
       if (tenantName) {
         infoRows.push({label: 'Tenant', value: tenantName});
       }
@@ -493,7 +489,7 @@ export const HistoryScreen: React.FC = () => {
         </View>
       );
     },
-    [handleViewPhoto, photoPreview.loading, photoPreview.sourceUrl, photoPreview.visible, propertyName, theme],
+    [handleViewPhoto, photoPreview.loading, photoPreview.sourceUrl, photoPreview.visible, theme],
   );
 
   const listFooter = useMemo(() => {
