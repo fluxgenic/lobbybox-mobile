@@ -217,10 +217,15 @@ export const HistoryScreen: React.FC = () => {
 
   const loadPhotoPreview = useCallback(
     async (photoUrl: string) => {
+      console.log('[HistoryScreen] Loading photo preview URL', {photoUrl});
+      setPhotoPreview(prev => ({...prev, loading: true, uri: null, error: null}));
+
       try {
         const refreshedUrl = await refreshParcelPhotoReadUrl(photoUrl);
+        console.log('[HistoryScreen] Photo preview URL refreshed', {refreshedUrl});
         setPhotoPreview(prev => ({...prev, loading: false, uri: refreshedUrl, error: null}));
       } catch (err) {
+        console.error('[HistoryScreen] Failed to refresh photo preview URL', err);
         const parsed = parseApiError(err, 'Unable to load photo.');
         setPhotoPreview(prev => ({...prev, loading: false, uri: null, error: parsed}));
       }
