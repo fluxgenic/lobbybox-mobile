@@ -294,7 +294,7 @@ export const HomeScreen: React.FC = () => {
                   style={[
                     styles.parcelInfoValue,
                     {color: theme.roles.text.primary},
-                    row.highlight ? {color: theme.palette.primary.main} : null,
+                    row.highlight ? {color: theme.palette.info.main} : null,
                     row.multiline ? styles.parcelInfoValueMultiline : null,
                   ]}
                   numberOfLines={row.multiline ? 3 : 1}
