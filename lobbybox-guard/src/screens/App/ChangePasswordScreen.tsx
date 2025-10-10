@@ -173,7 +173,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingVertical: 12,
+    paddingTop: 10,
+    paddingBottom: 24,
+    paddingHorizontal: 10,
     gap: 20,
   },
   fieldGroup: {

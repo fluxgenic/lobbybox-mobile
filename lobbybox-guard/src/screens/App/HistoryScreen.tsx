@@ -376,44 +376,33 @@ export const HistoryScreen: React.FC = () => {
       const isPreviewLoading =
         photoPreview.visible && photoPreview.sourceUrl === trimmedPhotoUrl && photoPreview.loading;
 
-      const infoBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(16, 24, 40, 0.04)';
-      const detailBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(16, 24, 40, 0.05)';
+      const displayName = recipient ?? 'Recipient not provided';
+      const avatarInitials = displayName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part.charAt(0).toUpperCase())
+        .join('') || 'P';
 
-      const primaryInfo: {
-        label: string;
-        value: string;
-        highlight?: boolean;
-        span?: 'full';
-      }[] = [
-        {
-          label: 'Name',
-          value: recipient ?? 'Recipient not provided',
-          span: 'full',
-        },
-        {
-          label: 'Unit / Remarks',
-          value: remarks ?? '—',
-        },
-        {
-          label: 'Logged',
-          value: collectedAt,
-        },
-        {
-          label: 'Tracking #',
-          value: tracking ?? '—',
-          highlight: Boolean(tracking),
-        },
-      ];
+      const chipBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(16, 24, 40, 0.05)';
+      const badgeBackground = hasPhoto
+        ? theme.mode === 'dark'
+          ? 'rgba(59, 201, 126, 0.24)'
+          : 'rgba(59, 201, 126, 0.16)'
+        : theme.mode === 'dark'
+        ? 'rgba(77, 166, 255, 0.24)'
+        : 'rgba(77, 166, 255, 0.18)';
+      const badgeTextColor = theme.mode === 'dark' ? '#FFFFFF' : '#1F2937';
 
-      const secondaryDetails: {label: string; value: string; highlight?: boolean}[] = [];
+      const infoChips: {label: string; value: string}[] = [];
       if (property) {
-        secondaryDetails.push({label: 'Property', value: property});
-      }
-      if (contact) {
-        secondaryDetails.push({label: 'Contact', value: contact});
+        infoChips.push({label: 'Property', value: property});
       }
       if (tenantName) {
-        secondaryDetails.push({label: 'Tenant', value: tenantName});
+        infoChips.push({label: 'Tenant', value: tenantName});
+      }
+      if (contact) {
+        infoChips.push({label: 'Contact', value: contact});
       }
 
       return (
@@ -422,48 +411,57 @@ export const HistoryScreen: React.FC = () => {
             styles.card,
             {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border},
           ]}>
-          <View style={styles.primaryInfoGrid}>
-            {primaryInfo.map(info => (
-              <View
-                key={`${info.label}-${info.value}`}
-                style={[
-                  styles.primaryInfoItem,
-                  info.span === 'full' ? styles.primaryInfoFull : null,
-                  {
-                    backgroundColor: infoBackground,
-                    borderColor: theme.roles.card.border,
-                  },
-                ]}>
-                <Text style={[styles.infoLabel, {color: theme.roles.text.secondary}]}>{info.label}</Text>
-                <Text
-                  style={[
-                    styles.infoValue,
-                    {color: theme.roles.text.primary},
-                    info.highlight ? styles.infoValueHighlight : null,
-                  ]}>
-                  {info.value}
+          <View style={styles.cardHeader}>
+            <View style={[styles.cardAvatar, {backgroundColor: theme.palette.primary.main}]}>
+              <Text style={[styles.cardAvatarText, {color: theme.roles.text.onPrimary}]}>{avatarInitials}</Text>
+            </View>
+            <View style={styles.cardHeaderContent}>
+              <Text style={[styles.cardTitle, {color: theme.roles.text.primary}]} numberOfLines={1}>
+                {displayName}
+              </Text>
+              <View style={styles.cardMetaRow}>
+                <Text style={[styles.cardMetaText, {color: theme.roles.text.secondary}]} numberOfLines={1}>
+                  {collectedAt}
                 </Text>
+                {tracking ? (
+                  <View
+                    style={[
+                      styles.cardMetaChip,
+                      {backgroundColor: chipBackground, borderColor: theme.roles.card.border},
+                    ]}>
+                    <Text style={[styles.cardMetaChipText, {color: theme.roles.text.primary}]} numberOfLines={1}>
+                      #{tracking}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-            ))}
+            </View>
+            <View style={[styles.cardStatusBadge, {backgroundColor: badgeBackground}]}>
+              <Text style={[styles.cardStatusText, {color: badgeTextColor}]}> 
+                {hasPhoto ? 'Photo logged' : 'Manual entry'}
+              </Text>
+            </View>
           </View>
 
-          {secondaryDetails.length > 0 ? (
-            <View style={styles.detailGrid}>
-              {secondaryDetails.map(detail => (
+          <View style={styles.cardBody}>
+            <Text style={[styles.cardBodyLabel, {color: theme.roles.text.secondary}]}>Unit / Remarks</Text>
+            <Text style={[styles.cardBodyValue, {color: theme.roles.text.primary}]} numberOfLines={3}>
+              {remarks ?? 'Not provided'}
+            </Text>
+          </View>
+
+          {infoChips.length > 0 ? (
+            <View style={styles.cardChipRow}>
+              {infoChips.map(chip => (
                 <View
-                  key={`${detail.label}-${detail.value}`}
+                  key={`${chip.label}-${chip.value}`}
                   style={[
-                    styles.detailPill,
-                    {backgroundColor: detailBackground, borderColor: theme.roles.card.border},
+                    styles.cardChip,
+                    {backgroundColor: chipBackground, borderColor: theme.roles.card.border},
                   ]}>
-                  <Text style={[styles.detailLabel, {color: theme.roles.text.secondary}]}>{detail.label}</Text>
-                  <Text
-                    style={[
-                      styles.detailValue,
-                      {color: theme.roles.text.primary},
-                      detail.highlight ? styles.detailValueHighlight : null,
-                    ]}>
-                    {detail.value}
+                  <Text style={[styles.cardChipLabel, {color: theme.roles.text.secondary}]}>{chip.label}</Text>
+                  <Text style={[styles.cardChipValue, {color: theme.roles.text.primary}]} numberOfLines={1}>
+                    {chip.value}
                   </Text>
                 </View>
               ))}
@@ -474,7 +472,7 @@ export const HistoryScreen: React.FC = () => {
             {hasPhoto ? (
               <TouchableOpacity
                 onPress={() => handleViewPhoto(item)}
-                style={[styles.viewPhotoButton, {backgroundColor: detailBackground}]}
+                style={[styles.viewPhotoButton, {backgroundColor: chipBackground}]}
                 accessibilityRole="button"
                 accessibilityLabel={`View parcel photo${recipient ? ` for ${recipient}` : ''}`}>
                 {isPreviewLoading ? (
@@ -483,7 +481,7 @@ export const HistoryScreen: React.FC = () => {
                 <Text style={[styles.viewPhotoText, {color: theme.palette.primary.main}]}>View photo</Text>
               </TouchableOpacity>
             ) : (
-              <Text style={[styles.manualEntryText, {color: theme.roles.text.secondary}]}>Manual entry</Text>
+              <Text style={[styles.cardFooterNote, {color: theme.roles.text.secondary}]}>No photo available</Text>
             )}
             {item.collectedByUserId ? (
               <Text style={[styles.cardFooterMeta, {color: theme.roles.text.secondary}]}>Handled by guard</Text>
@@ -574,9 +572,9 @@ export const HistoryScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   listContent: {
+    paddingTop: 12,
     paddingBottom: 48,
-    paddingLeft:10,
-    paddingRight:10
+    paddingHorizontal: 16,
   },
   header: {
     marginBottom: 24,
@@ -655,83 +653,109 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   card: {
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 20,
+    padding: 18,
   },
-  primaryInfoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -4,
-  },
-  primaryInfoItem: {
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    margin: 4,
-    flexBasis: '48%',
-    flexGrow: 1,
-  },
-  primaryInfoFull: {
-    flexBasis: '100%',
-  },
-  infoLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 6,
-  },
-  infoValue: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '600',
-  },
-  infoValueHighlight: {
-    fontWeight: '700',
-  },
-  detailGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-  },
-  detailPill: {
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginRight: 12,
-    marginBottom: 12,
-    borderWidth: 1,
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    minWidth: '48%',
-    flexGrow: 1,
-    flexBasis: '48%',
   },
-  detailLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginRight: 12,
-    flexShrink: 0,
+  cardAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
-  detailValue: {
-    fontSize: 15,
-    lineHeight: 21,
-    flexShrink: 1,
-    textAlign: 'right',
+  cardAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  detailValueHighlight: {
+  cardHeaderContent: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 18,
     fontWeight: '700',
   },
-  cardFooter: {
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  cardMetaText: {
+    fontSize: 13,
+  },
+  cardMetaChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  cardMetaChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  cardStatusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginLeft: 12,
+  },
+  cardStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  cardBody: {
     marginTop: 16,
+  },
+  cardBodyLabel: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  cardBodyValue: {
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  cardChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 14,
+  },
+  cardChip: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    maxWidth: '100%',
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  cardChipLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  cardChipValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cardFooter: {
+    marginTop: 18,
     paddingTop: 16,
     borderTopWidth: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   viewPhotoButton: {
     flexDirection: 'row',
@@ -747,12 +771,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  manualEntryText: {
-    fontSize: 14,
+  cardFooterNote: {
+    fontSize: 13,
     fontStyle: 'italic',
   },
   cardFooterMeta: {
     fontSize: 13,
+    marginLeft: 12,
   },
   separator: {
     height: 16,

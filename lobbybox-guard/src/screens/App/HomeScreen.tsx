@@ -215,45 +215,35 @@ export const HomeScreen: React.FC = () => {
     const remarks = parcel.remarks?.trim();
     const tracking = parcel.trackingNumber?.trim();
     const recipient = parcel.recipientName?.trim();
+    const displayName = recipient ?? 'Recipient not provided';
     const parcelProperty = parcel.propertyName?.trim() || propertyDisplay || undefined;
     const mobileNumber = parcel.mobileNumber?.trim();
     const hasPhoto = Boolean(parcel.photoUrl);
     const loggedAt = formatTime(parcel.collectedAt ?? parcel.createdAt);
-    const infoBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(16, 24, 40, 0.04)';
-    const detailBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(16, 24, 40, 0.05)';
 
-    const primaryInfo: {
-      label: string;
-      value: string;
-      highlight?: boolean;
-      span?: 'full';
-    }[] = [
-      {
-        label: 'Name',
-        value: recipient ?? 'Recipient not provided',
-        span: 'full',
-      },
-      {
-        label: 'Unit / Remarks',
-        value: remarks ?? '—',
-      },
-      {
-        label: 'Logged',
-        value: loggedAt,
-      },
-      {
-        label: 'Tracking #',
-        value: tracking ?? '—',
-        highlight: Boolean(tracking),
-      },
-    ];
+    const chipBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(16, 24, 40, 0.05)';
+    const badgeBackground = hasPhoto
+      ? theme.mode === 'dark'
+        ? 'rgba(59, 201, 126, 0.24)'
+        : 'rgba(59, 201, 126, 0.16)'
+      : theme.mode === 'dark'
+      ? 'rgba(77, 166, 255, 0.24)'
+      : 'rgba(77, 166, 255, 0.18)';
+    const badgeTextColor = theme.mode === 'dark' ? '#FFFFFF' : '#1F2937';
 
-    const secondaryDetails: {label: string; value: string}[] = [];
+    const avatarInitials = displayName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part.charAt(0).toUpperCase())
+      .join('') || 'P';
+
+    const infoChips: {label: string; value: string}[] = [];
     if (parcelProperty) {
-      secondaryDetails.push({label: 'Property', value: parcelProperty});
+      infoChips.push({label: 'Property', value: parcelProperty});
     }
     if (mobileNumber) {
-      secondaryDetails.push({label: 'Contact', value: mobileNumber});
+      infoChips.push({label: 'Contact', value: mobileNumber});
     }
 
     return (
@@ -264,42 +254,62 @@ export const HomeScreen: React.FC = () => {
           {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border},
           index > 0 ? styles.parcelSpacing : null,
         ]}>
-        <View style={styles.primaryInfoGrid}>
-          {primaryInfo.map(info => (
-            <View
-              key={`${info.label}-${info.value}`}
-              style={[
-                styles.primaryInfoItem,
-                info.span === 'full' ? styles.primaryInfoFull : null,
-                {
-                  backgroundColor: infoBackground,
-                  borderColor: theme.roles.card.border,
-                },
-              ]}>
-              <Text style={[styles.infoLabel, {color: theme.roles.text.secondary}]}>{info.label}</Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  {color: theme.roles.text.primary},
-                  info.highlight ? styles.infoValueHighlight : null,
-                ]}>
-                {info.value}
-              </Text>
+        <View style={styles.parcelHeader}>
+          <View style={[styles.parcelAvatar, {backgroundColor: theme.palette.primary.main}]}>
+            <Text style={[styles.parcelAvatarText, {color: theme.roles.text.onPrimary}]}>{avatarInitials}</Text>
+          </View>
+          <View style={styles.parcelHeaderContent}>
+            <Text style={[styles.parcelName, {color: theme.roles.text.primary}]} numberOfLines={1}>
+              {displayName}
+            </Text>
+            <View style={styles.parcelMetaRow}>
+              <Text style={[styles.parcelMetaText, {color: theme.roles.text.secondary}]}>Logged {loggedAt}</Text>
+              {tracking ? (
+                <View
+                  style={[
+                    styles.parcelMetaChip,
+                    {
+                      backgroundColor: chipBackground,
+                      borderColor: theme.roles.card.border,
+                    },
+                  ]}>
+                  <Text style={[styles.parcelMetaChipText, {color: theme.roles.text.primary}]} numberOfLines={1}>
+                    #{tracking}
+                  </Text>
+                </View>
+              ) : null}
             </View>
-          ))}
+          </View>
+          <View style={[styles.parcelStatusBadge, {backgroundColor: badgeBackground}]}>
+            <Text style={[styles.parcelStatusText, {color: badgeTextColor}]}> 
+              {hasPhoto ? 'Photo logged' : 'Manual entry'}
+            </Text>
+          </View>
         </View>
 
-        {secondaryDetails.length > 0 ? (
-          <View style={styles.detailGrid}>
-            {secondaryDetails.map(detail => (
+        <View style={styles.parcelBody}>
+          <Text style={[styles.parcelDetailLabel, {color: theme.roles.text.secondary}]}>Unit / Remarks</Text>
+          <Text style={[styles.parcelDetailValue, {color: theme.roles.text.primary}]} numberOfLines={2}>
+            {remarks ?? 'Not provided'}
+          </Text>
+        </View>
+
+        {infoChips.length > 0 ? (
+          <View style={styles.parcelChipRow}>
+            {infoChips.map(chip => (
               <View
-                key={`${detail.label}-${detail.value}`}
+                key={`${chip.label}-${chip.value}`}
                 style={[
-                  styles.detailPill,
-                  {backgroundColor: detailBackground, borderColor: theme.roles.card.border},
+                  styles.parcelChip,
+                  {
+                    backgroundColor: chipBackground,
+                    borderColor: theme.roles.card.border,
+                  },
                 ]}>
-                <Text style={[styles.detailLabel, {color: theme.roles.text.secondary}]}>{detail.label}</Text>
-                <Text style={[styles.detailValue, {color: theme.roles.text.primary}]}>{detail.value}</Text>
+                <Text style={[styles.parcelChipLabel, {color: theme.roles.text.secondary}]}>{chip.label}</Text>
+                <Text style={[styles.parcelChipValue, {color: theme.roles.text.primary}]} numberOfLines={1}>
+                  {chip.value}
+                </Text>
               </View>
             ))}
           </View>
@@ -309,13 +319,13 @@ export const HomeScreen: React.FC = () => {
           {hasPhoto ? (
             <TouchableOpacity
               onPress={() => openPhotoPreview(parcel)}
-              style={[styles.viewPhotoButton, {backgroundColor: detailBackground}]}
+              style={[styles.viewPhotoButton, {backgroundColor: chipBackground}]}
               accessibilityRole="button"
               accessibilityLabel={`View parcel photo${recipient ? ` for ${recipient}` : ''}`}>
               <Text style={[styles.viewPhotoText, {color: theme.palette.primary.main}]}>View photo</Text>
             </TouchableOpacity>
           ) : (
-            <Text style={[styles.manualEntryText, {color: theme.roles.text.secondary}]}>Manual entry</Text>
+            <Text style={[styles.parcelFooterNote, {color: theme.roles.text.secondary}]}>No photo available</Text>
           )}
           {parcel.collectedByUserId ? (
             <Text style={[styles.cardFooterMeta, {color: theme.roles.text.secondary}]}>Handled by guard</Text>
@@ -575,86 +585,112 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   parcelCard: {
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 20,
+    padding: 18,
   },
   parcelSpacing: {
     marginTop: 16,
   },
-  primaryInfoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -4,
-  },
-  primaryInfoItem: {
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    margin: 4,
-    flexBasis: '48%',
-    flexGrow: 1,
-  },
-  primaryInfoFull: {
-    flexBasis: '100%',
-  },
-  infoLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 6,
-  },
-  infoValue: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '600',
-  },
-  infoValueHighlight: {
-    fontWeight: '700',
-  },
-  detailGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-  },
-  detailPill: {
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginRight: 12,
-    marginBottom: 12,
-    borderWidth: 1,
+  parcelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    minWidth: '48%',
-    flexGrow: 1,
-    flexBasis: '48%',
   },
-  detailLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginRight: 12,
-    flexShrink: 0,
+  parcelAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
-  detailValue: {
-    fontSize: 15,
-    lineHeight: 21,
-    flexShrink: 1,
-    textAlign: 'right',
+  parcelAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  detailValueHighlight: {
+  parcelHeaderContent: {
+    flex: 1,
+  },
+  parcelName: {
+    fontSize: 18,
     fontWeight: '700',
   },
-  cardFooter: {
+  parcelMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  parcelMetaText: {
+    fontSize: 13,
+  },
+  parcelMetaChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  parcelMetaChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  parcelStatusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginLeft: 12,
+  },
+  parcelStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  parcelBody: {
     marginTop: 16,
+  },
+  parcelDetailLabel: {
+    fontSize: 12,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  parcelDetailValue: {
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  parcelChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 14,
+  },
+  parcelChip: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    maxWidth: '100%',
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  parcelChipLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  parcelChipValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cardFooter: {
+    marginTop: 18,
     paddingTop: 16,
     borderTopWidth: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   viewPhotoButton: {
     flexDirection: 'row',
@@ -667,12 +703,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  manualEntryText: {
-    fontSize: 14,
+  parcelFooterNote: {
+    fontSize: 13,
     fontStyle: 'italic',
   },
   cardFooterMeta: {
     fontSize: 13,
+    marginLeft: 12,
   },
   modalBackdrop: {
     flex: 1,
