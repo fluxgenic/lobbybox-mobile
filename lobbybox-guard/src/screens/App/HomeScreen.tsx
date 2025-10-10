@@ -249,7 +249,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer style={styles.screenContainer}>
       <View style={styles.wrapper}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -329,6 +329,9 @@ export const HomeScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    paddingTop: 8,
+  },
   wrapper: {
     flex: 1,
   },
