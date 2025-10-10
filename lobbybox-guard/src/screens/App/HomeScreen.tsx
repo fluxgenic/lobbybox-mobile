@@ -1,7 +1,9 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  Linking,
   Modal,
   RefreshControl,
   ScrollView,
@@ -15,7 +17,7 @@ import {ScreenContainer} from '@/components/ScreenContainer';
 import {useThemeContext} from '@/theme';
 import {useAuth} from '@/context/AuthContext';
 import {useNetworkStatus} from '@/hooks/useNetworkStatus';
-import {fetchParcelsForDate} from '@/api/parcels';
+import {fetchParcelsForDate, refreshParcelPhotoReadUrl} from '@/api/parcels';
 import {ParcelListItem} from '@/api/types';
 import {parcelsStorage} from '@/storage/parcelsStorage';
 import {OfflineBanner} from '@/components/OfflineBanner';
@@ -52,9 +54,22 @@ const formatRecipientName = (value?: string | null) => {
 
 type PhotoPreviewState = {
   visible: boolean;
+  loading: boolean;
+  sourceUrl: string | null;
   uri: string | null;
   recipient?: string | null;
   tracking?: string | null;
+  error: ParsedApiError | null;
+};
+
+const initialPhotoPreviewState: PhotoPreviewState = {
+  visible: false,
+  loading: false,
+  sourceUrl: null,
+  uri: null,
+  recipient: undefined,
+  tracking: undefined,
+  error: null,
 };
 
 export const HomeScreen: React.FC = () => {
@@ -74,7 +89,7 @@ export const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<ParsedApiError | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<PhotoPreviewState>({visible: false, uri: null});
+  const [photoPreview, setPhotoPreview] = useState<PhotoPreviewState>(initialPhotoPreviewState);
 
   const loadCachedData = useCallback(async () => {
     console.log('[HomeScreen] Loading cached parcels', {date: todayIso, propertyId});
@@ -199,26 +214,70 @@ export const HomeScreen: React.FC = () => {
     ? lastUpdatedAt.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})
     : '—';
 
+  const loadPhotoPreview = useCallback(async (photoUrl: string) => {
+    try {
+      const refreshedUrl = await refreshParcelPhotoReadUrl(photoUrl);
+      setPhotoPreview(prev => ({...prev, loading: false, uri: refreshedUrl, error: null}));
+    } catch (err) {
+      const parsed = parseApiError(err, 'Unable to load photo.');
+      setPhotoPreview(prev => ({...prev, loading: false, uri: null, error: parsed}));
+    }
+  }, []);
+
   const openPhotoPreview = useCallback(
     (parcel: ParcelListItem) => {
-      if (!parcel.photoUrl) {
-        showToast('No photo available for this parcel.', {type: 'info'});
+      const trimmedPhotoUrl = parcel.photoUrl?.trim();
+      if (!trimmedPhotoUrl) {
+        showToast('No image to display.', {type: 'info'});
         return;
       }
 
       setPhotoPreview({
         visible: true,
-        uri: parcel.photoUrl,
+        loading: true,
+        sourceUrl: trimmedPhotoUrl,
+        uri: null,
         recipient: parcel.recipientName ? formatRecipientName(parcel.recipientName) : undefined,
         tracking: parcel.trackingNumber,
+        error: null,
       });
+      loadPhotoPreview(trimmedPhotoUrl);
     },
-    [showToast],
+    [loadPhotoPreview, showToast],
   );
 
   const closePhotoPreview = useCallback(() => {
-    setPhotoPreview(prev => ({...prev, visible: false}));
+    setPhotoPreview(initialPhotoPreviewState);
   }, []);
+
+  const handleDialNumber = useCallback(async (phoneNumber: string) => {
+    const sanitized = phoneNumber.replace(/[^0-9+]/g, '');
+    if (!sanitized) {
+      return;
+    }
+
+    const telUrl = `tel:${sanitized}`;
+
+    try {
+      const supported = await Linking.canOpenURL(telUrl);
+      if (supported) {
+        await Linking.openURL(telUrl);
+      } else {
+        Alert.alert('Unable to open dialer', 'Calling is not supported on this device.');
+      }
+    } catch (error) {
+      console.warn('[HomeScreen] Unable to open dialer', {phoneNumber, error});
+      Alert.alert('Unable to open dialer', 'Please try again later.');
+    }
+  }, []);
+
+  type InfoRow = {
+    label: string;
+    value: string;
+    highlight?: boolean;
+    multiline?: boolean;
+    onPress?: () => void;
+  };
 
   const renderParcel = (parcel: ParcelListItem, index: number) => {
     const remarks = parcel.remarks?.trim();
@@ -238,7 +297,7 @@ export const HomeScreen: React.FC = () => {
       .map(part => part.charAt(0).toUpperCase())
       .join('') || 'P';
 
-    const infoRows: {label: string; value: string; highlight?: boolean; multiline?: boolean}[] = [
+    const infoRows: InfoRow[] = [
       {
         label: 'Unit / Remarks',
         value: remarks ?? 'Not provided',
@@ -256,7 +315,13 @@ export const HomeScreen: React.FC = () => {
     ];
 
     if (mobileNumber) {
-      infoRows.push({label: 'Contact', value: mobileNumber});
+      infoRows.push({
+        label: 'Contact',
+        value: mobileNumber,
+        onPress: () => {
+          void handleDialNumber(mobileNumber);
+        },
+      });
     }
 
     return (
@@ -290,17 +355,37 @@ export const HomeScreen: React.FC = () => {
                   styles.parcelInfoValueContainer,
                   row.multiline ? styles.parcelInfoValueContainerMultiline : null,
                 ]}>
-                <Text
-                  style={[
-                    styles.parcelInfoValue,
-                    {color: theme.roles.text.primary},
-                    row.highlight ? {color: theme.palette.info.main} : null,
-                    row.multiline ? styles.parcelInfoValueMultiline : null,
-                  ]}
-                  numberOfLines={row.multiline ? 3 : 1}
-                  ellipsizeMode="tail">
-                  {row.value}
-                </Text>
+                {row.onPress ? (
+                  <TouchableOpacity
+                    onPress={row.onPress}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Call ${row.value}`}
+                    style={styles.parcelInfoValueButton}
+                    activeOpacity={0.7}>
+                    <Text
+                      style={[
+                        styles.parcelInfoValue,
+                        {color: theme.palette.primary.main},
+                        row.multiline ? styles.parcelInfoValueMultiline : null,
+                      ]}
+                      numberOfLines={row.multiline ? 3 : 1}
+                      ellipsizeMode="tail">
+                      {row.value}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text
+                    style={[
+                      styles.parcelInfoValue,
+                      {color: theme.roles.text.primary},
+                      row.highlight ? {color: theme.palette.info.main} : null,
+                      row.multiline ? styles.parcelInfoValueMultiline : null,
+                    ]}
+                    numberOfLines={row.multiline ? 3 : 1}
+                    ellipsizeMode="tail">
+                    {row.value}
+                  </Text>
+                )}
               </View>
             </View>
           ))}
@@ -316,7 +401,7 @@ export const HomeScreen: React.FC = () => {
               <Text style={[styles.viewPhotoText, {color: theme.palette.primary.main}]}>View photo</Text>
             </TouchableOpacity>
           ) : (
-            <Text style={[styles.parcelFooterNote, {color: theme.roles.text.secondary}]}>No photo available</Text>
+            <Text style={[styles.parcelFooterNote, {color: theme.roles.text.secondary}]}>No image to display</Text>
           )}
           {parcel.collectedByUserId ? (
             <Text style={[styles.cardFooterMeta, {color: theme.roles.text.secondary}]}>Handled by guard</Text>
@@ -436,10 +521,16 @@ export const HomeScreen: React.FC = () => {
               {photoPreview.tracking ? (
                 <Text style={[styles.modalMeta, {color: theme.roles.text.secondary}]}>Tracking #: {photoPreview.tracking}</Text>
               ) : null}
-              {photoPreview.uri ? (
+              {photoPreview.loading ? (
+                <View style={styles.modalLoader}>
+                  <ActivityIndicator color={theme.palette.primary.main} />
+                </View>
+              ) : photoPreview.uri ? (
                 <Image source={{uri: photoPreview.uri}} style={styles.modalImage} resizeMode="contain" />
+              ) : photoPreview.error ? (
+                <Text style={[styles.modalMeta, {color: theme.roles.status.error}]}>{photoPreview.error.message}</Text>
               ) : (
-                <Text style={[styles.modalMeta, {color: theme.roles.status.error}]}>Photo unavailable</Text>
+                <Text style={[styles.modalMeta, {color: theme.roles.status.error}]}>No image to display</Text>
               )}
             </ScrollView>
             <Button title="Close" onPress={closePhotoPreview} style={styles.modalButton} />
@@ -642,6 +733,10 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     alignItems: 'flex-end',
   },
+  parcelInfoValueButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+  },
   parcelInfoValueContainerMultiline: {
     alignItems: 'flex-start',
   },
@@ -697,6 +792,11 @@ const styles = StyleSheet.create({
   modalMeta: {
     fontSize: 14,
     marginBottom: 8,
+  },
+  modalLoader: {
+    marginTop: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalImage: {
     width: 260,

@@ -1,8 +1,10 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
+  Linking,
   ListRenderItem,
   Modal,
   RefreshControl,
@@ -371,6 +373,35 @@ export const HistoryScreen: React.FC = () => {
     return null;
   }, [error, handleRetry, hasLoadedOnce, loading, propertyId, theme]);
 
+  const handleDialNumber = useCallback(async (phoneNumber: string) => {
+    const sanitized = phoneNumber.replace(/[^0-9+]/g, '');
+    if (!sanitized) {
+      return;
+    }
+
+    const telUrl = `tel:${sanitized}`;
+
+    try {
+      const supported = await Linking.canOpenURL(telUrl);
+      if (supported) {
+        await Linking.openURL(telUrl);
+      } else {
+        Alert.alert('Unable to open dialer', 'Calling is not supported on this device.');
+      }
+    } catch (error) {
+      console.warn('[HistoryScreen] Unable to open dialer', {phoneNumber, error});
+      Alert.alert('Unable to open dialer', 'Please try again later.');
+    }
+  }, []);
+
+  type InfoRow = {
+    label: string;
+    value: string;
+    highlight?: boolean;
+    multiline?: boolean;
+    onPress?: () => void;
+  };
+
   const renderItem = useCallback<ListRenderItem<ParcelListItem>>(
     ({item}) => {
       const tracking = item.trackingNumber?.trim();
@@ -396,7 +427,7 @@ export const HistoryScreen: React.FC = () => {
       const trackingHighlightColor = theme.mode === 'dark' ? 'rgba(77, 166, 255, 0.24)' : 'rgba(37, 99, 235, 0.16)';
       const chipBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(16, 24, 40, 0.05)';
 
-      const infoRows: {label: string; value: string; highlight?: boolean; multiline?: boolean}[] = [
+      const infoRows: InfoRow[] = [
         {
           label: 'Unit / Remarks',
           value: remarks ?? 'Not provided',
@@ -417,7 +448,13 @@ export const HistoryScreen: React.FC = () => {
         infoRows.push({label: 'Tenant', value: tenantName});
       }
       if (contact) {
-        infoRows.push({label: 'Contact', value: contact});
+        infoRows.push({
+          label: 'Contact',
+          value: contact,
+          onPress: () => {
+            void handleDialNumber(contact);
+          },
+        });
       }
 
       return (
@@ -442,28 +479,48 @@ export const HistoryScreen: React.FC = () => {
 
           <View style={styles.cardInfoSection}>
             {infoRows.map((row, rowIndex) => (
-              <View
-                key={`${row.label}-${row.value}`}
-                style={[styles.cardInfoRow, rowIndex > 0 ? styles.cardInfoRowSpacing : null]}>
-                <Text style={[styles.cardInfoLabel, {color: theme.roles.text.secondary}]}>{row.label}</Text>
                 <View
-                  style={[
-                    styles.cardInfoValueContainer,
-                    row.multiline ? styles.cardInfoValueContainerMultiline : null,
-                  ]}>
-                  <Text
+                  key={`${row.label}-${row.value}`}
+                  style={[styles.cardInfoRow, rowIndex > 0 ? styles.cardInfoRowSpacing : null]}>
+                  <Text style={[styles.cardInfoLabel, {color: theme.roles.text.secondary}]}>{row.label}</Text>
+                  <View
                     style={[
-                      styles.cardInfoValue,
-                      {color: theme.roles.text.primary},
-                      row.highlight ? {color: theme.palette.info.main} : null,
-                      row.multiline ? styles.cardInfoValueMultiline : null,
-                    ]}
-                    numberOfLines={row.multiline ? 3 : 1}
-                    ellipsizeMode="tail">
-                    {row.value}
-                  </Text>
+                      styles.cardInfoValueContainer,
+                      row.multiline ? styles.cardInfoValueContainerMultiline : null,
+                    ]}>
+                    {row.onPress ? (
+                      <TouchableOpacity
+                        onPress={row.onPress}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Call ${row.value}`}
+                        style={styles.cardInfoValueButton}
+                        activeOpacity={0.7}>
+                        <Text
+                          style={[
+                            styles.cardInfoValue,
+                            {color: theme.palette.primary.main},
+                            row.multiline ? styles.cardInfoValueMultiline : null,
+                          ]}
+                          numberOfLines={row.multiline ? 3 : 1}
+                          ellipsizeMode="tail">
+                          {row.value}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text
+                        style={[
+                          styles.cardInfoValue,
+                          {color: theme.roles.text.primary},
+                          row.highlight ? {color: theme.palette.info.main} : null,
+                          row.multiline ? styles.cardInfoValueMultiline : null,
+                        ]}
+                        numberOfLines={row.multiline ? 3 : 1}
+                        ellipsizeMode="tail">
+                        {row.value}
+                      </Text>
+                    )}
+                  </View>
                 </View>
-              </View>
             ))}
           </View>
 
@@ -480,7 +537,7 @@ export const HistoryScreen: React.FC = () => {
                 <Text style={[styles.viewPhotoText, {color: theme.palette.primary.main}]}>View photo</Text>
               </TouchableOpacity>
             ) : (
-              <Text style={[styles.cardFooterNote, {color: theme.roles.text.secondary}]}>No photo available</Text>
+              <Text style={[styles.cardFooterNote, {color: theme.roles.text.secondary}]}>No image to display</Text>
             )}
             {item.collectedByUserId ? (
               <Text style={[styles.cardFooterMeta, {color: theme.roles.text.secondary}]}>Handled by guard</Text>
@@ -489,7 +546,14 @@ export const HistoryScreen: React.FC = () => {
         </View>
       );
     },
-    [handleViewPhoto, photoPreview.loading, photoPreview.sourceUrl, photoPreview.visible, theme],
+    [
+      handleDialNumber,
+      handleViewPhoto,
+      photoPreview.loading,
+      photoPreview.sourceUrl,
+      photoPreview.visible,
+      theme,
+    ],
   );
 
   const listFooter = useMemo(() => {
@@ -549,7 +613,7 @@ export const HistoryScreen: React.FC = () => {
               ) : photoPreview.error ? (
                 <Text style={[styles.modalError, {color: theme.roles.status.error}]}>{photoPreview.error.message}</Text>
               ) : (
-                <Text style={[styles.modalError, {color: theme.roles.status.error}]}>Photo unavailable</Text>
+                <Text style={[styles.modalError, {color: theme.roles.status.error}]}>No image to display</Text>
               )}
             </ScrollView>
             <View
@@ -714,6 +778,10 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     marginLeft: 12,
     alignItems: 'flex-end',
+  },
+  cardInfoValueButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
   },
   cardInfoValueContainerMultiline: {
     alignItems: 'flex-start',
