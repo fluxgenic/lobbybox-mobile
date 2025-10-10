@@ -381,6 +381,7 @@ export const HistoryScreen: React.FC = () => {
       const property = item.propertyName?.trim() || propertyName;
       const tenantName = item.tenantName?.trim();
       const trimmedPhotoUrl = item.photoUrl?.trim() ?? '';
+      const logisticSource = item.logisticSource?.trim();
       const hasPhoto = trimmedPhotoUrl.length > 0;
       const isPreviewLoading =
         photoPreview.visible && photoPreview.sourceUrl === trimmedPhotoUrl && photoPreview.loading;
@@ -406,6 +407,10 @@ export const HistoryScreen: React.FC = () => {
           label: 'Tracking number',
           value: tracking ? `#${tracking}` : 'Not provided',
           highlight: Boolean(tracking),
+        },
+        {
+          label: 'Logistic',
+          value: logisticSource ?? 'Not provided',
         },
       ];
 

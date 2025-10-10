@@ -918,6 +918,9 @@ export const CaptureScreen: React.FC = () => {
           {lastCreatedParcel.remarks ? (
             <Text style={[styles.successSummaryText, { color: theme.roles.text.secondary }]}>Remarks: {lastCreatedParcel.remarks}</Text>
           ) : null}
+          {lastCreatedParcel.logisticSource ? (
+            <Text style={[styles.successSummaryText, { color: theme.roles.text.secondary }]}>Logistic: {lastCreatedParcel.logisticSource}</Text>
+          ) : null}
         </View>
       ) : null}
       <View style={styles.successActions}>

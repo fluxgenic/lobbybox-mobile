@@ -39,6 +39,7 @@ export type ParcelListItem = {
   createdAt?: string | null;
   propertyName?: string | null;
   tenantName?: string | null;
+  logisticSource?: string | null;
 };
 
 export type PaginatedResponse<T> = {
