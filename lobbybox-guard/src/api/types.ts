@@ -59,6 +59,14 @@ export type ParcelUploadResponse = {
   blobName:string,
 };
 
+export type ParcelReadRequest = {
+  photoUrl: string;
+};
+
+export type ParcelReadResponse = {
+  readUrl: string;
+};
+
 export type CreateParcelRequest = {
   propertyId: string;
   photoUrl?: string | null;
