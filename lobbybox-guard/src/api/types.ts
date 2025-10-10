@@ -76,6 +76,7 @@ export type CreateParcelRequest = {
   ocrText?: string | null;
   trackingNumber?: string | null;
   recipientName?: string | null;
+  logisticSource?: string | null;
   collectedAt: string;
 };
 
@@ -88,6 +89,7 @@ export type ParcelOcrSuggestion = {
   unit?: string | null;
   address?: string | null;
   ocrText?: string | null;
+  logisticSource?: string | null;
 };
 
 export type AuthResponse = {

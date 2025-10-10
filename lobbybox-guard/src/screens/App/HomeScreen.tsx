@@ -225,7 +225,6 @@ export const HomeScreen: React.FC = () => {
     const tracking = parcel.trackingNumber?.trim();
     const recipient = parcel.recipientName?.trim();
     const displayName = formatRecipientName(recipient);
-    const parcelProperty = parcel.propertyName?.trim() || propertyDisplay || undefined;
     const mobileNumber = parcel.mobileNumber?.trim();
     const logisticSource = parcel.logisticSource?.trim();
     const hasPhoto = Boolean(parcel.photoUrl);
@@ -255,10 +254,6 @@ export const HomeScreen: React.FC = () => {
         value: logisticSource ?? 'Not provided',
       },
     ];
-
-    if (parcelProperty) {
-      infoRows.push({label: 'Property', value: parcelProperty});
-    }
 
     if (mobileNumber) {
       infoRows.push({label: 'Contact', value: mobileNumber});

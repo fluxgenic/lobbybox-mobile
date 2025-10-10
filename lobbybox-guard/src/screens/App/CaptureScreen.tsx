@@ -57,6 +57,7 @@ type ParcelFormState = {
   trackingNumber: string;
   recipientName: string;
   mobileNumber: string;
+  logisticSource: string;
   ocrText: string;
   remarks: string;
   collectedAt: string;
@@ -70,6 +71,7 @@ const createBlankFormState = (): ParcelFormState => ({
   trackingNumber: '',
   recipientName: '',
   mobileNumber: '',
+  logisticSource: '',
   ocrText: '',
   remarks: '',
   collectedAt: new Date().toISOString(),
@@ -473,7 +475,8 @@ export const CaptureScreen: React.FC = () => {
           recipientName: response.customerName ?? '',
           mobileNumber: response.mobileNumber ?? '',
           ocrText: response.ocrText ?? '',
-          remarks: response.unit
+          remarks: response.unit ?? '',
+          logisticSource: response.logisticSource?.trim() ?? '',
         };
       } catch (error) {
         console.error('[CaptureScreen] Failed to fetch OCR suggestions', error);
@@ -548,6 +551,7 @@ export const CaptureScreen: React.FC = () => {
         ocrText: '',
         trackingNumber: sanitizeInput(cleanedValues.trackingNumber) ?? null,
         recipientName: sanitizeInput(cleanedValues.recipientName) ?? null,
+        logisticSource: sanitizeInput(formState.logisticSource) ?? null,
         collectedAt: collectedAtIso,
       };
 
@@ -843,6 +847,20 @@ export const CaptureScreen: React.FC = () => {
             {formErrors.mobileNumber ? (
               <Text style={[styles.errorText, { color: theme.roles.status.error }]}>{formErrors.mobileNumber}</Text>
             ) : null}
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Logistic</Text>
+            <TextInput
+              style={[styles.textInput, { color: theme.roles.text.primary, borderColor: theme.roles.card.border, backgroundColor: theme.roles.input.background }]}
+              value={formState.logisticSource}
+              onChangeText={value => {
+                setFormState(prev => ({ ...prev, logisticSource: value }));
+              }}
+              placeholder="Detected logistic from label"
+              placeholderTextColor={theme.roles.text.secondary}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
           </View>
           <View style={styles.inputGroup} onLayout={handleFieldLayout('remarks')}>
             <Text style={[styles.inputLabel, { color: theme.roles.text.secondary }]}>Remark/Unit</Text>
