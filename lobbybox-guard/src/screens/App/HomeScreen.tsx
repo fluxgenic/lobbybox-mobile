@@ -270,7 +270,6 @@ export const HomeScreen: React.FC = () => {
                     styles.parcelMetaChip,
                     {
                       backgroundColor: chipBackground,
-                      borderColor: theme.roles.card.border,
                     },
                   ]}>
                   <Text style={[styles.parcelMetaChipText, {color: theme.roles.text.primary}]} numberOfLines={1}>
@@ -295,19 +294,16 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {infoChips.length > 0 ? (
-          <View style={styles.parcelChipRow}>
-            {infoChips.map(chip => (
+          <View style={styles.parcelInfoSection}>
+            {infoChips.map((chip, chipIndex) => (
               <View
                 key={`${chip.label}-${chip.value}`}
-                style={[
-                  styles.parcelChip,
-                  {
-                    backgroundColor: chipBackground,
-                    borderColor: theme.roles.card.border,
-                  },
-                ]}>
-                <Text style={[styles.parcelChipLabel, {color: theme.roles.text.secondary}]}>{chip.label}</Text>
-                <Text style={[styles.parcelChipValue, {color: theme.roles.text.primary}]} numberOfLines={1}>
+                style={[styles.parcelInfoRow, chipIndex > 0 ? styles.parcelInfoRowSpacing : null]}>
+                <Text style={[styles.parcelInfoLabel, {color: theme.roles.text.secondary}]}>{chip.label}</Text>
+                <Text
+                  style={[styles.parcelInfoValue, {color: theme.roles.text.primary}]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail">
                   {chip.value}
                 </Text>
               </View>
@@ -626,7 +622,6 @@ const styles = StyleSheet.create({
   },
   parcelMetaChip: {
     borderRadius: 999,
-    borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginLeft: 8,
@@ -660,29 +655,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
   },
-  parcelChipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  parcelInfoSection: {
     marginTop: 14,
   },
-  parcelChip: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    maxWidth: '100%',
-    marginRight: 10,
-    marginBottom: 10,
+  parcelInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  parcelChipLabel: {
-    fontSize: 11,
+  parcelInfoRowSpacing: {
+    marginTop: 10,
+  },
+  parcelInfoLabel: {
+    fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    marginBottom: 4,
   },
-  parcelChipValue: {
-    fontSize: 14,
+  parcelInfoValue: {
+    fontSize: 15,
     fontWeight: '600',
+    marginLeft: 12,
+    flex: 1,
+    textAlign: 'right',
+    flexShrink: 1,
   },
   cardFooter: {
     marginTop: 18,

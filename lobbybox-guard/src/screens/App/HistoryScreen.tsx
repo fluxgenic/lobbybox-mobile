@@ -425,10 +425,7 @@ export const HistoryScreen: React.FC = () => {
                 </Text>
                 {tracking ? (
                   <View
-                    style={[
-                      styles.cardMetaChip,
-                      {backgroundColor: chipBackground, borderColor: theme.roles.card.border},
-                    ]}>
+                    style={[styles.cardMetaChip, {backgroundColor: chipBackground}]}>
                     <Text style={[styles.cardMetaChipText, {color: theme.roles.text.primary}]} numberOfLines={1}>
                       #{tracking}
                     </Text>
@@ -451,16 +448,16 @@ export const HistoryScreen: React.FC = () => {
           </View>
 
           {infoChips.length > 0 ? (
-            <View style={styles.cardChipRow}>
-              {infoChips.map(chip => (
+            <View style={styles.cardInfoSection}>
+              {infoChips.map((chip, chipIndex) => (
                 <View
                   key={`${chip.label}-${chip.value}`}
-                  style={[
-                    styles.cardChip,
-                    {backgroundColor: chipBackground, borderColor: theme.roles.card.border},
-                  ]}>
-                  <Text style={[styles.cardChipLabel, {color: theme.roles.text.secondary}]}>{chip.label}</Text>
-                  <Text style={[styles.cardChipValue, {color: theme.roles.text.primary}]} numberOfLines={1}>
+                  style={[styles.cardInfoRow, chipIndex > 0 ? styles.cardInfoRowSpacing : null]}>
+                  <Text style={[styles.cardInfoLabel, {color: theme.roles.text.secondary}]}>{chip.label}</Text>
+                  <Text
+                    style={[styles.cardInfoValue, {color: theme.roles.text.primary}]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail">
                     {chip.value}
                   </Text>
                 </View>
@@ -691,7 +688,6 @@ const styles = StyleSheet.create({
   },
   cardMetaChip: {
     borderRadius: 999,
-    borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginLeft: 8,
@@ -725,29 +721,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
   },
-  cardChipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  cardInfoSection: {
     marginTop: 14,
   },
-  cardChip: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    maxWidth: '100%',
-    marginRight: 10,
-    marginBottom: 10,
+  cardInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  cardChipLabel: {
-    fontSize: 11,
+  cardInfoRowSpacing: {
+    marginTop: 10,
+  },
+  cardInfoLabel: {
+    fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    marginBottom: 4,
   },
-  cardChipValue: {
-    fontSize: 14,
+  cardInfoValue: {
+    fontSize: 15,
     fontWeight: '600',
+    marginLeft: 12,
+    flex: 1,
+    textAlign: 'right',
+    flexShrink: 1,
   },
   cardFooter: {
     marginTop: 18,
