@@ -56,7 +56,7 @@ export const ProfileDetailsScreen: React.FC = () => {
   }, [user]);
 
   return (
-    <ScreenContainer>
+    <ScreenContainer style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} bounces={false} showsVerticalScrollIndicator={false}>
         <View
           style={[styles.headerCard, {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border}]}
@@ -103,9 +103,11 @@ const formatRole = (role: string): string => {
 };
 
 const styles = StyleSheet.create({
-  content: {
+  screen: {
     paddingTop: 10,
     paddingHorizontal: 10,
+  },
+  content: {
     paddingBottom: 24,
   },
   headerCard: {

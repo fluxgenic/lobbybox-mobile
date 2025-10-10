@@ -59,6 +59,15 @@ const formatDateTime = (value?: string | null) => {
   return `${datePart} · ${timePart}`;
 };
 
+const formatRecipientName = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return 'Recipient not provided';
+  }
+
+  return trimmed.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+};
+
 export const HistoryScreen: React.FC = () => {
   const {theme} = useThemeContext();
   const {user} = useAuth();
@@ -229,7 +238,7 @@ export const HistoryScreen: React.FC = () => {
         loading: true,
         sourceUrl: trimmedPhotoUrl,
         uri: null,
-        recipient: parcel.recipientName?.trim() || undefined,
+        recipient: parcel.recipientName ? formatRecipientName(parcel.recipientName) : undefined,
         tracking: parcel.trackingNumber?.trim() || undefined,
         error: null,
       });
@@ -376,7 +385,7 @@ export const HistoryScreen: React.FC = () => {
       const isPreviewLoading =
         photoPreview.visible && photoPreview.sourceUrl === trimmedPhotoUrl && photoPreview.loading;
 
-      const displayName = recipient ?? 'Recipient not provided';
+      const displayName = formatRecipientName(recipient);
       const avatarInitials = displayName
         .split(/\s+/)
         .filter(Boolean)
@@ -385,24 +394,28 @@ export const HistoryScreen: React.FC = () => {
         .join('') || 'P';
 
       const chipBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(16, 24, 40, 0.05)';
-      const badgeBackground = hasPhoto
-        ? theme.mode === 'dark'
-          ? 'rgba(59, 201, 126, 0.24)'
-          : 'rgba(59, 201, 126, 0.16)'
-        : theme.mode === 'dark'
-        ? 'rgba(77, 166, 255, 0.24)'
-        : 'rgba(77, 166, 255, 0.18)';
-      const badgeTextColor = theme.mode === 'dark' ? '#FFFFFF' : '#1F2937';
 
-      const infoChips: {label: string; value: string}[] = [];
+      const infoRows: {label: string; value: string; highlight?: boolean; multiline?: boolean}[] = [
+        {
+          label: 'Unit / Remarks',
+          value: remarks ?? 'Not provided',
+          multiline: true,
+        },
+        {
+          label: 'Tracking number',
+          value: tracking ? `#${tracking}` : 'Not provided',
+          highlight: Boolean(tracking),
+        },
+      ];
+
       if (property) {
-        infoChips.push({label: 'Property', value: property});
+        infoRows.push({label: 'Property', value: property});
       }
       if (tenantName) {
-        infoChips.push({label: 'Tenant', value: tenantName});
+        infoRows.push({label: 'Tenant', value: tenantName});
       }
       if (contact) {
-        infoChips.push({label: 'Contact', value: contact});
+        infoRows.push({label: 'Contact', value: contact});
       }
 
       return (
@@ -416,57 +429,41 @@ export const HistoryScreen: React.FC = () => {
               <Text style={[styles.cardAvatarText, {color: theme.roles.text.onPrimary}]}>{avatarInitials}</Text>
             </View>
             <View style={styles.cardHeaderContent}>
-              <Text style={[styles.cardTitle, {color: theme.roles.text.primary}]} numberOfLines={1}>
-                {displayName}
-              </Text>
+              <Text style={[styles.cardTitle, {color: theme.roles.text.primary}]}>{displayName}</Text>
               <View style={styles.cardMetaRow}>
                 <Text style={[styles.cardMetaText, {color: theme.roles.text.secondary}]} numberOfLines={1}>
                   {collectedAt}
                 </Text>
-                {tracking ? (
-                  <View
-                    style={[
-                      styles.cardMetaChip,
-                      {backgroundColor: chipBackground, borderColor: theme.roles.card.border},
-                    ]}>
-                    <Text style={[styles.cardMetaChipText, {color: theme.roles.text.primary}]} numberOfLines={1}>
-                      #{tracking}
-                    </Text>
-                  </View>
-                ) : null}
               </View>
             </View>
-            <View style={[styles.cardStatusBadge, {backgroundColor: badgeBackground}]}>
-              <Text style={[styles.cardStatusText, {color: badgeTextColor}]}> 
-                {hasPhoto ? 'Photo logged' : 'Manual entry'}
-              </Text>
-            </View>
           </View>
 
-          <View style={styles.cardBody}>
-            <Text style={[styles.cardBodyLabel, {color: theme.roles.text.secondary}]}>Unit / Remarks</Text>
-            <Text style={[styles.cardBodyValue, {color: theme.roles.text.primary}]} numberOfLines={3}>
-              {remarks ?? 'Not provided'}
-            </Text>
-          </View>
-
-          {infoChips.length > 0 ? (
-            <View style={styles.cardChipRow}>
-              {infoChips.map(chip => (
+          <View style={styles.cardInfoSection}>
+            {infoRows.map((row, rowIndex) => (
+              <View
+                key={`${row.label}-${row.value}`}
+                style={[styles.cardInfoRow, rowIndex > 0 ? styles.cardInfoRowSpacing : null]}>
+                <Text style={[styles.cardInfoLabel, {color: theme.roles.text.secondary}]}>{row.label}</Text>
                 <View
-                  key={`${chip.label}-${chip.value}`}
                   style={[
-                    styles.cardChip,
-                    {backgroundColor: chipBackground, borderColor: theme.roles.card.border},
+                    styles.cardInfoValueContainer,
+                    row.multiline ? styles.cardInfoValueContainerMultiline : null,
                   ]}>
-                  <Text style={[styles.cardChipLabel, {color: theme.roles.text.secondary}]}>{chip.label}</Text>
-                  <Text style={[styles.cardChipValue, {color: theme.roles.text.primary}]} numberOfLines={1}>
-                    {chip.value}
+                  <Text
+                    style={[
+                      styles.cardInfoValue,
+                      {color: theme.roles.text.primary},
+                      row.highlight ? {color: theme.palette.primary.main} : null,
+                      row.multiline ? styles.cardInfoValueMultiline : null,
+                    ]}
+                    numberOfLines={row.multiline ? 3 : 1}
+                    ellipsizeMode="tail">
+                    {row.value}
                   </Text>
                 </View>
-              ))}
-            </View>
-          ) : null}
+              </View>
+            ))}
+          </View>
 
           <View style={[styles.cardFooter, {borderTopColor: theme.roles.card.border}]}>
             {hasPhoto ? (
@@ -474,7 +471,7 @@ export const HistoryScreen: React.FC = () => {
                 onPress={() => handleViewPhoto(item)}
                 style={[styles.viewPhotoButton, {backgroundColor: chipBackground}]}
                 accessibilityRole="button"
-                accessibilityLabel={`View parcel photo${recipient ? ` for ${recipient}` : ''}`}>
+                accessibilityLabel={`View parcel photo${item.recipientName ? ` for ${displayName}` : ''}`}>
                 {isPreviewLoading ? (
                   <ActivityIndicator color={theme.palette.primary.main} style={styles.viewPhotoSpinner} />
                 ) : null}
@@ -689,65 +686,38 @@ const styles = StyleSheet.create({
   cardMetaText: {
     fontSize: 13,
   },
-  cardMetaChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginLeft: 8,
-  },
-  cardMetaChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  cardStatusBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginLeft: 12,
-  },
-  cardStatusText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  cardBody: {
+  cardInfoSection: {
     marginTop: 16,
   },
-  cardBodyLabel: {
+  cardInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  cardInfoRowSpacing: {
+    marginTop: 10,
+  },
+  cardInfoLabel: {
     fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    marginBottom: 4,
+    flexShrink: 0,
   },
-  cardBodyValue: {
+  cardInfoValue: {
     fontSize: 15,
-    lineHeight: 21,
-  },
-  cardChipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 14,
-  },
-  cardChip: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    maxWidth: '100%',
-    marginRight: 10,
-    marginBottom: 10,
-  },
-  cardChipLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 4,
-  },
-  cardChipValue: {
-    fontSize: 14,
     fontWeight: '600',
+    textAlign: 'right',
+  },
+  cardInfoValueContainer: {
+    flexShrink: 1,
+    marginLeft: 12,
+    alignItems: 'flex-end',
+  },
+  cardInfoValueContainerMultiline: {
+    alignItems: 'flex-start',
+  },
+  cardInfoValueMultiline: {
+    textAlign: 'left',
   },
   cardFooter: {
     marginTop: 18,
