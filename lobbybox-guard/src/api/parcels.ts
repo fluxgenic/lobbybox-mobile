@@ -86,6 +86,46 @@ export const fetchParcelsForDate = async (
   }
 };
 
+type FetchParcelHistoryParams = {
+  propertyId: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export const fetchParcelHistory = async ({
+  propertyId,
+  page = 1,
+  pageSize = 20,
+}: FetchParcelHistoryParams): Promise<PaginatedResponse<ParcelListItem>> => {
+  const params = {
+    propertyId,
+    page,
+    pageSize,
+  };
+
+  console.log('[api/parcels] fetchParcelHistory request', params);
+
+  try {
+    const {data} = await api.get<PaginatedResponse<ParcelListItem>>('/parcels/guard/history', {
+      params,
+    });
+
+    console.log('[api/parcels] fetchParcelHistory response', {
+      ...params,
+      total: data.total,
+      received: data.data.length,
+    });
+
+    return data;
+  } catch (error) {
+    console.error('[api/parcels] fetchParcelHistory error', {
+      ...params,
+      error,
+    });
+    throw error;
+  }
+};
+
 export const requestParcelUpload = async (): Promise<ParcelUploadResponse> => {
   const payload: ParcelUploadRequest = {ext: 'jpg'};
   const {data} = await api.post<ParcelUploadResponse>('/parcels/sas', payload);
