@@ -393,6 +393,7 @@ export const HistoryScreen: React.FC = () => {
         .map(part => part.charAt(0).toUpperCase())
         .join('') || 'P';
 
+      const trackingHighlightColor = theme.mode === 'dark' ? 'rgba(77, 166, 255, 0.24)' : 'rgba(37, 99, 235, 0.16)';
       const chipBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(16, 24, 40, 0.05)';
 
       const infoRows: {label: string; value: string; highlight?: boolean; multiline?: boolean}[] = [
