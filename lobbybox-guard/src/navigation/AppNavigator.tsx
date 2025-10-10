@@ -74,6 +74,24 @@ const PropertyHeaderTitle: React.FC<{title: string; subtitle?: string | null}> =
 
 const ProfileNavigator: React.FC = () => {
   const {theme} = useThemeContext();
+  const {user} = useAuth();
+
+  const propertyName = user?.property?.name?.trim() ?? user?.propertyName?.trim() ?? null;
+  const propertyCode = user?.property?.code?.trim() ?? null;
+  const greeting = useMemo(() => {
+    const displayName = user?.displayName ?? user?.fullName ?? user?.email;
+    return displayName ? `Welcome, ${displayName}` : 'Profile';
+  }, [user]);
+
+  const profileHeaderTitle = useMemo(
+    () =>
+      function Header() {
+        return (
+          <PropertyHeaderTitle title={propertyName ?? greeting} subtitle={propertyCode ?? null} />
+        );
+      },
+    [greeting, propertyCode, propertyName],
+  );
 
   return (
     <ProfileStack.Navigator
@@ -84,7 +102,7 @@ const ProfileNavigator: React.FC = () => {
         contentStyle: {backgroundColor: theme.roles.background.default},
       }}
     >
-      <ProfileStack.Screen name="Settings" component={SettingsScreen} options={{headerShown: false}} />
+      <ProfileStack.Screen name="Settings" component={SettingsScreen} options={{headerTitle: profileHeaderTitle}} />
       <ProfileStack.Screen name="ProfileDetails" component={ProfileDetailsScreen} options={{title: 'My Profile'}} />
       <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{title: 'Change Password'}} />
     </ProfileStack.Navigator>

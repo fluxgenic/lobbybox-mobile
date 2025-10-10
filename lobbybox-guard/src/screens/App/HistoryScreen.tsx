@@ -368,27 +368,51 @@ export const HistoryScreen: React.FC = () => {
       const contact = item.mobileNumber?.trim();
       const collectedAt = formatDateTime(item.collectedAt ?? item.createdAt);
       const property = item.propertyName?.trim() || propertyName;
+      const tenantName = item.tenantName?.trim();
       const trimmedPhotoUrl = item.photoUrl?.trim() ?? '';
       const hasPhoto = trimmedPhotoUrl.length > 0;
       const isPreviewLoading =
         photoPreview.visible && photoPreview.sourceUrl === trimmedPhotoUrl && photoPreview.loading;
 
-      const details: {label: string; value: string}[] = [];
+      const infoBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(16, 24, 40, 0.04)';
+      const detailBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(16, 24, 40, 0.05)';
+
+      const primaryInfo: {
+        label: string;
+        value: string;
+        highlight?: boolean;
+        span?: 'full';
+      }[] = [
+        {
+          label: 'Name',
+          value: recipient ?? 'Recipient not provided',
+          span: 'full',
+        },
+        {
+          label: 'Unit / Remarks',
+          value: remarks ?? '—',
+        },
+        {
+          label: 'Logged',
+          value: collectedAt,
+        },
+        {
+          label: 'Tracking #',
+          value: tracking ?? '—',
+          highlight: Boolean(tracking),
+        },
+      ];
+
+      const secondaryDetails: {label: string; value: string; highlight?: boolean}[] = [];
       if (property) {
-        details.push({label: 'Property', value: property});
-      }
-      if (remarks) {
-        details.push({label: 'Unit / Remarks', value: remarks});
+        secondaryDetails.push({label: 'Property', value: property});
       }
       if (contact) {
-        details.push({label: 'Contact', value: contact});
+        secondaryDetails.push({label: 'Contact', value: contact});
       }
-      if (!tracking && item.trackingNumber?.trim()) {
-        details.push({label: 'Tracking', value: item.trackingNumber.trim()});
+      if (tenantName) {
+        secondaryDetails.push({label: 'Tenant', value: tenantName});
       }
-
-      const detailBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(16, 24, 40, 0.05)';
-      const timestampBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(16, 24, 40, 0.06)';
 
       return (
         <View
@@ -396,58 +420,55 @@ export const HistoryScreen: React.FC = () => {
             styles.card,
             {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border},
           ]}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardTitleGroup}>
-              <Text style={[styles.cardTitle, {color: theme.roles.text.primary}]}>
-                {recipient ?? 'Recipient not provided'}
-              </Text>
-              {remarks ? (
-                <Text style={[styles.cardSubtitle, {color: theme.roles.text.secondary}]}>{remarks}</Text>
-              ) : null}
-            </View>
-            <View style={[styles.timestampChip, {backgroundColor: timestampBackground}]}> 
-              <Text style={[styles.timestampLabel, {color: theme.roles.text.secondary}]}>Logged</Text>
-              <Text style={[styles.timestampValue, {color: theme.roles.text.primary}]}>{collectedAt}</Text>
-            </View>
-          </View>
-          <View style={styles.cardMetaRow}>
-            {tracking ? (
-              <View style={[styles.metaBadge, {backgroundColor: theme.palette.primary.main}]}> 
-                <Text style={[styles.metaBadgeLabel, {color: theme.roles.text.onPrimary}]}>Tracking #</Text>
-                <Text style={[styles.metaBadgeValue, {color: theme.roles.text.onPrimary}]}>{tracking}</Text>
+          <View style={styles.primaryInfoGrid}>
+            {primaryInfo.map(info => (
+              <View
+                key={`${info.label}-${info.value}`}
+                style={[
+                  styles.primaryInfoItem,
+                  info.span === 'full' ? styles.primaryInfoFull : null,
+                  {
+                    backgroundColor: infoBackground,
+                    borderColor: theme.roles.card.border,
+                  },
+                ]}>
+                <Text style={[styles.infoLabel, {color: theme.roles.text.secondary}]}>{info.label}</Text>
+                <Text
+                  style={[
+                    styles.infoValue,
+                    {color: theme.roles.text.primary},
+                    info.highlight ? styles.infoValueHighlight : null,
+                  ]}>
+                  {info.value}
+                </Text>
               </View>
-            ) : null}
-            {item.tenantName ? (
-              <View style={[styles.metaBadge, {backgroundColor: timestampBackground}]}> 
-                <Text style={[styles.metaBadgeLabel, {color: theme.roles.text.secondary}]}>Tenant</Text>
-                <Text style={[styles.metaBadgeValue, {color: theme.roles.text.primary}]}>{item.tenantName}</Text>
-              </View>
-            ) : null}
+            ))}
           </View>
-          {details.length > 0 ? (
-            <View style={styles.detailGrid}>
-              {details.map((detail, index) => {
-                const isHighlightedValue = detail.label.toLowerCase().includes('tracking');
 
-                return (
-                  <View
-                    key={`${detail.label}-${index}`}
-                    style={[styles.detailPill, {backgroundColor: detailBackground, borderColor: theme.roles.card.border}]}> 
-                    <Text style={[styles.detailLabel, {color: theme.roles.text.secondary}]}>{detail.label}</Text>
-                    <Text
-                      style={[
-                        styles.detailValue,
-                        {color: theme.roles.text.primary},
-                        isHighlightedValue ? styles.detailValueHighlight : null,
-                      ]}>
-                      {detail.value}
-                    </Text>
-                  </View>
-                );
-              })}
+          {secondaryDetails.length > 0 ? (
+            <View style={styles.detailGrid}>
+              {secondaryDetails.map(detail => (
+                <View
+                  key={`${detail.label}-${detail.value}`}
+                  style={[
+                    styles.detailPill,
+                    {backgroundColor: detailBackground, borderColor: theme.roles.card.border},
+                  ]}>
+                  <Text style={[styles.detailLabel, {color: theme.roles.text.secondary}]}>{detail.label}</Text>
+                  <Text
+                    style={[
+                      styles.detailValue,
+                      {color: theme.roles.text.primary},
+                      detail.highlight ? styles.detailValueHighlight : null,
+                    ]}>
+                    {detail.value}
+                  </Text>
+                </View>
+              ))}
             </View>
           ) : null}
-          <View style={[styles.cardFooter, {borderTopColor: theme.roles.card.border}]}> 
+
+          <View style={[styles.cardFooter, {borderTopColor: theme.roles.card.border}]}>
             {hasPhoto ? (
               <TouchableOpacity
                 onPress={() => handleViewPhoto(item)}
@@ -636,62 +657,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 20,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  cardTitleGroup: {
-    flex: 1,
-    marginRight: 16,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    marginTop: 6,
-    lineHeight: 20,
-  },
-  timestampChip: {
-    borderRadius: 14,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    alignItems: 'flex-start',
-    maxWidth: 180,
-  },
-  timestampLabel: {
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  timestampValue: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  cardMetaRow: {
+  primaryInfoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 16,
+    marginHorizontal: -4,
   },
-  metaBadge: {
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginRight: 12,
-    marginBottom: 12,
+  primaryInfoItem: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    margin: 4,
+    flexBasis: '48%',
+    flexGrow: 1,
   },
-  metaBadgeLabel: {
+  primaryInfoFull: {
+    flexBasis: '100%',
+  },
+  infoLabel: {
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
+    marginBottom: 6,
   },
-  metaBadgeValue: {
-    fontSize: 15,
+  infoValue: {
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: '600',
-    marginTop: 4,
+  },
+  infoValueHighlight: {
+    fontWeight: '700',
   },
   detailGrid: {
     flexDirection: 'row',

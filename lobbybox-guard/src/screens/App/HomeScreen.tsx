@@ -55,6 +55,9 @@ export const HomeScreen: React.FC = () => {
   const todayIso = getTodayIsoDate();
   const propertyId = user?.property?.id ?? user?.tenantId ?? null;
   const userId = user?.id ?? null;
+  const propertyName = user?.property?.name?.trim() ?? user?.propertyName?.trim() ?? null;
+  const propertyCode = user?.property?.code?.trim() ?? null;
+  const propertyDisplay = propertyName ? (propertyCode ? `${propertyName} (${propertyCode})` : propertyName) : null;
 
   const [parcels, setParcels] = useState<ParcelListItem[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
@@ -180,7 +183,12 @@ export const HomeScreen: React.FC = () => {
   );
 
   const statusText = isOffline ? 'Offline — showing cached data' : 'Live data';
-  const statusColor = isOffline ? theme.roles.status.error : theme.roles.status.success;
+  const refreshDisabled = refreshing || loading;
+  const summaryAccent = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.2)';
+  const summaryPill = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.18)';
+  const lastUpdatedLabel = lastUpdatedAt
+    ? lastUpdatedAt.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})
+    : '—';
 
   const openPhotoPreview = useCallback(
     (parcel: ParcelListItem) => {
@@ -207,46 +215,116 @@ export const HomeScreen: React.FC = () => {
     const remarks = parcel.remarks?.trim();
     const tracking = parcel.trackingNumber?.trim();
     const recipient = parcel.recipientName?.trim();
-    const propertyName = parcel.propertyName?.trim();
+    const parcelProperty = parcel.propertyName?.trim() || propertyDisplay || undefined;
     const mobileNumber = parcel.mobileNumber?.trim();
     const hasPhoto = Boolean(parcel.photoUrl);
+    const loggedAt = formatTime(parcel.collectedAt ?? parcel.createdAt);
+    const infoBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(16, 24, 40, 0.04)';
+    const detailBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(16, 24, 40, 0.05)';
+
+    const primaryInfo: {
+      label: string;
+      value: string;
+      highlight?: boolean;
+      span?: 'full';
+    }[] = [
+      {
+        label: 'Name',
+        value: recipient ?? 'Recipient not provided',
+        span: 'full',
+      },
+      {
+        label: 'Unit / Remarks',
+        value: remarks ?? '—',
+      },
+      {
+        label: 'Logged',
+        value: loggedAt,
+      },
+      {
+        label: 'Tracking #',
+        value: tracking ?? '—',
+        highlight: Boolean(tracking),
+      },
+    ];
+
+    const secondaryDetails: {label: string; value: string}[] = [];
+    if (parcelProperty) {
+      secondaryDetails.push({label: 'Property', value: parcelProperty});
+    }
+    if (mobileNumber) {
+      secondaryDetails.push({label: 'Contact', value: mobileNumber});
+    }
 
     return (
       <View
         key={parcel.id}
         style={[
-          styles.parcelItem,
+          styles.parcelCard,
           {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border},
           index > 0 ? styles.parcelSpacing : null,
         ]}>
-        <View style={styles.parcelHeader}>
-          <Text style={[styles.parcelTime, {color: theme.roles.text.secondary}]}>Collected {formatTime(parcel.collectedAt)}</Text>
+        <View style={styles.primaryInfoGrid}>
+          {primaryInfo.map(info => (
+            <View
+              key={`${info.label}-${info.value}`}
+              style={[
+                styles.primaryInfoItem,
+                info.span === 'full' ? styles.primaryInfoFull : null,
+                {
+                  backgroundColor: infoBackground,
+                  borderColor: theme.roles.card.border,
+                },
+              ]}>
+              <Text style={[styles.infoLabel, {color: theme.roles.text.secondary}]}>{info.label}</Text>
+              <Text
+                style={[
+                  styles.infoValue,
+                  {color: theme.roles.text.primary},
+                  info.highlight ? styles.infoValueHighlight : null,
+                ]}>
+                {info.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {secondaryDetails.length > 0 ? (
+          <View style={styles.detailGrid}>
+            {secondaryDetails.map(detail => (
+              <View
+                key={`${detail.label}-${detail.value}`}
+                style={[
+                  styles.detailPill,
+                  {backgroundColor: detailBackground, borderColor: theme.roles.card.border},
+                ]}>
+                <Text style={[styles.detailLabel, {color: theme.roles.text.secondary}]}>{detail.label}</Text>
+                <Text style={[styles.detailValue, {color: theme.roles.text.primary}]}>{detail.value}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        <View style={[styles.cardFooter, {borderTopColor: theme.roles.card.border}]}>
           {hasPhoto ? (
-            <TouchableOpacity onPress={() => openPhotoPreview(parcel)} accessibilityRole="button">
-              <Text style={[styles.viewPhoto, {color: theme.palette.primary.main}]}>View photo</Text>
+            <TouchableOpacity
+              onPress={() => openPhotoPreview(parcel)}
+              style={[styles.viewPhotoButton, {backgroundColor: detailBackground}]}
+              accessibilityRole="button"
+              accessibilityLabel={`View parcel photo${recipient ? ` for ${recipient}` : ''}`}>
+              <Text style={[styles.viewPhotoText, {color: theme.palette.primary.main}]}>View photo</Text>
             </TouchableOpacity>
           ) : (
-            <Text style={[styles.parcelManualTag, {color: theme.roles.text.secondary}]}>Manual entry</Text>
+            <Text style={[styles.manualEntryText, {color: theme.roles.text.secondary}]}>Manual entry</Text>
           )}
+          {parcel.collectedByUserId ? (
+            <Text style={[styles.cardFooterMeta, {color: theme.roles.text.secondary}]}>Handled by guard</Text>
+          ) : null}
         </View>
-        {propertyName ? (
-          <Text style={[styles.parcelMeta, {color: theme.roles.text.primary}]}>Property: {propertyName}</Text>
-        ) : null}
-        {tracking ? (
-          <Text style={[styles.parcelPrimary, {color: theme.roles.text.primary}]}>Tracking #: {tracking}</Text>
-        ) : null}
-        {recipient ? (
-          <Text style={[styles.parcelPrimary, {color: theme.roles.text.primary}]}>Recipient: {recipient}</Text>
-        ) : null}
-        {mobileNumber ? (
-          <Text style={[styles.parcelPrimary, {color: theme.roles.text.primary}]}>Contact: {mobileNumber}</Text>
-        ) : null}
-        {remarks ? (
-          <Text style={[styles.parcelRemarks, {color: theme.roles.text.secondary}]}>Remarks: {remarks}</Text>
-        ) : null}
       </View>
     );
   };
+
 
   return (
     <ScreenContainer style={styles.screenContainer}>
@@ -264,25 +342,60 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.content}>
             {isOffline ? <OfflineBanner /> : null}
             <View
-              style={[styles.summaryCard, {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border}]}
+              style={[styles.summaryCard, {backgroundColor: theme.palette.secondary.main}]}
             >
-              <Text style={[styles.summaryTitle, {color: theme.roles.text.primary}]}>Today's parcels</Text>
-              <Text style={[styles.summarySubtitle, {color: theme.roles.text.secondary}]}>{todayLabel}</Text>
-              <View style={styles.summaryMetaRow}>
-                <Text style={[styles.summaryMeta, {color: statusColor}]}>{statusText}</Text>
-                <Text style={[styles.summaryMeta, {color: theme.roles.text.secondary}]}>Last updated {lastUpdatedAt ? lastUpdatedAt.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '—'}</Text>
+              <Text style={[styles.summaryTitle, {color: theme.palette.secondary.contrastText}]}>Today's parcels</Text>
+              <Text style={[styles.summarySubtitle, {color: theme.palette.secondary.contrastText}]}>Monitor parcel activity for {todayLabel}.</Text>
+              {propertyDisplay ? (
+                <View style={[styles.summaryPropertyPill, {backgroundColor: summaryPill}]}> 
+                  <Text style={[styles.summaryPropertyLabel, {color: theme.palette.secondary.contrastText}]}>Property</Text>
+                  <Text style={[styles.summaryPropertyValue, {color: theme.palette.secondary.contrastText}]}>{propertyDisplay}</Text>
+                </View>
+              ) : null}
+              <View style={styles.summaryMetricsRow}>
+                <View style={[styles.summaryMetric, {backgroundColor: summaryAccent}]}> 
+                  <Text style={[styles.summaryMetricLabel, {color: theme.palette.secondary.contrastText}]}>Logged today</Text>
+                  <Text style={[styles.summaryMetricValue, {color: theme.palette.secondary.contrastText}]}>{parcels.length}</Text>
+                </View>
+                <View style={[styles.summaryMetric, {backgroundColor: summaryAccent}]}> 
+                  <Text style={[styles.summaryMetricLabel, {color: theme.palette.secondary.contrastText}]}>Status</Text>
+                  <Text style={[styles.summaryMetricValue, {color: theme.palette.secondary.contrastText}]}>{statusText}</Text>
+                </View>
+                <View style={[styles.summaryMetric, {backgroundColor: summaryAccent}]}> 
+                  <Text style={[styles.summaryMetricLabel, {color: theme.palette.secondary.contrastText}]}>Last updated</Text>
+                  <Text style={[styles.summaryMetricValue, {color: theme.palette.secondary.contrastText}]}>{lastUpdatedLabel}</Text>
+                </View>
               </View>
               {error ? (
-                <Text style={[styles.summaryError, {color: theme.roles.status.error}]}>{error.message}</Text>
+                <View style={[styles.summaryErrorCard, {borderColor: summaryAccent}]}> 
+                  <Text style={[styles.summaryErrorText, {color: theme.palette.secondary.contrastText}]}>{error.message}</Text>
+                  <Button title="Retry" onPress={handleRetry} variant="secondary" style={styles.summaryRetryButton} />
+                </View>
               ) : null}
-              <View style={styles.summaryFooter}>
-                <Text style={[styles.summaryCount, {color: theme.roles.text.primary}]}>{parcels.length}</Text>
-                <Text style={[styles.summaryCountLabel, {color: theme.roles.text.secondary}]}>parcels logged today</Text>
+              <View style={styles.summaryActions}>
+                <TouchableOpacity
+                  onPress={handleRefresh}
+                  style={[
+                    styles.summaryActionButton,
+                    {borderColor: summaryAccent, opacity: refreshDisabled ? 0.7 : 1},
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Refresh today's parcels"
+                  disabled={refreshDisabled}
+                >
+                  {refreshing ? (
+                    <ActivityIndicator
+                      color={theme.palette.secondary.contrastText}
+                      style={styles.summaryActionSpinner}
+                    />
+                  ) : null}
+                  <Text style={[styles.summaryActionText, {color: theme.palette.secondary.contrastText}]}>
+                    {refreshing ? 'Refreshing…' : 'Refresh now'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              {error ? (
-                <Button title="Retry" onPress={handleRetry} variant="secondary" style={styles.retryButton} />
-              ) : null}
             </View>
+
             <View style={styles.listHeader}>
               <Text style={[styles.listTitle, {color: theme.roles.text.primary}]}>Activity</Text>
               {loading ? <ActivityIndicator color={theme.palette.primary.main} /> : null}
@@ -334,8 +447,7 @@ const styles = StyleSheet.create({
   },
   wrapper: {
     flex: 1,
-    paddingLeft:10,
-    paddingRight:10
+    paddingHorizontal: 10,
   },
   scrollContent: {
     flexGrow: 1,
@@ -344,46 +456,92 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   summaryCard: {
-    borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
   },
   summaryTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '700',
   },
   summarySubtitle: {
     fontSize: 14,
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  summaryPropertyPill: {
+    marginTop: 16,
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  summaryPropertyLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    opacity: 0.85,
+  },
+  summaryPropertyValue: {
+    fontSize: 15,
+    fontWeight: '600',
     marginTop: 4,
   },
-  summaryMetaRow: {
+  summaryMetricsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
+    flexWrap: 'wrap',
+    marginTop: 16,
   },
-  summaryMeta: {
-    fontSize: 13,
+  summaryMetric: {
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginRight: 12,
+    marginBottom: 12,
+    minWidth: 120,
   },
-  summaryError: {
-    marginTop: 12,
-    fontSize: 13,
+  summaryMetricLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    opacity: 0.85,
+  },
+  summaryMetricValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 6,
+    lineHeight: 22,
+  },
+  summaryErrorCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginTop: 16,
+  },
+  summaryErrorText: {
+    fontSize: 14,
     fontWeight: '600',
+    marginBottom: 8,
   },
-  summaryFooter: {
+  summaryRetryButton: {
+    alignSelf: 'flex-start',
+  },
+  summaryActions: {
     marginTop: 16,
     flexDirection: 'row',
-    alignItems: 'baseline',
   },
-  summaryCount: {
-    fontSize: 36,
-    fontWeight: '700',
+  summaryActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderWidth: 1,
+  },
+  summaryActionSpinner: {
     marginRight: 8,
   },
-  summaryCountLabel: {
+  summaryActionText: {
     fontSize: 14,
-  },
-  retryButton: {
-    marginTop: 16,
+    fontWeight: '600',
   },
   listHeader: {
     flexDirection: 'row',
@@ -402,47 +560,111 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
   },
   parcelList: {
     marginTop: 4,
   },
-  parcelItem: {
+  parcelCard: {
+    borderRadius: 18,
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
+    padding: 20,
   },
   parcelSpacing: {
+    marginTop: 16,
+  },
+  primaryInfoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+  },
+  primaryInfoItem: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    margin: 4,
+    flexBasis: '48%',
+    flexGrow: 1,
+  },
+  primaryInfoFull: {
+    flexBasis: '100%',
+  },
+  infoLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  infoValue: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
+  infoValueHighlight: {
+    fontWeight: '700',
+  },
+  detailGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     marginTop: 12,
   },
-  parcelHeader: {
+  detailPill: {
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginRight: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minWidth: '48%',
+    flexGrow: 1,
+    flexBasis: '48%',
+  },
+  detailLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginRight: 12,
+    flexShrink: 0,
+  },
+  detailValue: {
+    fontSize: 15,
+    lineHeight: 21,
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+  detailValueHighlight: {
+    fontWeight: '700',
+  },
+  cardFooter: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  parcelTime: {
-    fontSize: 13,
-    fontWeight: '600',
+  viewPhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  viewPhoto: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  parcelManualTag: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  parcelPrimary: {
-    fontSize: 15,
-    marginTop: 4,
-  },
-  parcelMeta: {
+  viewPhotoText: {
     fontSize: 14,
-    marginTop: 4,
+    fontWeight: '600',
   },
-  parcelRemarks: {
+  manualEntryText: {
     fontSize: 14,
-    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  cardFooterMeta: {
+    fontSize: 13,
   },
   modalBackdrop: {
     flex: 1,
