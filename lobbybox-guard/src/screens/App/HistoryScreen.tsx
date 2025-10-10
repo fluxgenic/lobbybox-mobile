@@ -454,7 +454,7 @@ export const HistoryScreen: React.FC = () => {
                     style={[
                       styles.cardInfoValue,
                       {color: theme.roles.text.primary},
-                      row.highlight ? {color: theme.palette.primary.main} : null,
+                      row.highlight ? {color: theme.palette.info.main} : null,
                       row.multiline ? styles.cardInfoValueMultiline : null,
                     ]}
                     numberOfLines={row.multiline ? 3 : 1}
