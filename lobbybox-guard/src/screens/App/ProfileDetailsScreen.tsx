@@ -104,7 +104,9 @@ const formatRole = (role: string): string => {
 
 const styles = StyleSheet.create({
   content: {
-    padding: 24,
+    paddingTop: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 24,
   },
   headerCard: {
     alignItems: 'center',
