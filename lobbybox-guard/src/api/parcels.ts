@@ -134,8 +134,8 @@ export const requestParcelUpload = async (): Promise<ParcelUploadResponse> => {
   return data;
 };
 
-export const refreshParcelPhotoReadUrl = async (photoUrl: string): Promise<string> => {
-  const payload: ParcelReadRequest = {photoUrl};
+export const refreshParcelPhotoReadUrl = async (blobUrl: string): Promise<string> => {
+  const payload: ParcelReadRequest = {blobUrl};
   const {data} = await api.post<ParcelReadResponse>('/parcels/sas/read', payload);
   return data.readUrl;
 };

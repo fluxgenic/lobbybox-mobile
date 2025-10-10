@@ -61,7 +61,7 @@ export type ParcelUploadResponse = {
 };
 
 export type ParcelReadRequest = {
-  photoUrl: string;
+  blobUrl: string;
 };
 
 export type ParcelReadResponse = {
