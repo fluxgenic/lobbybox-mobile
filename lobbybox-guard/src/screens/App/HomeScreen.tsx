@@ -41,6 +41,15 @@ const formatTime = (value?: string | null) => {
   return date.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
 };
 
+const formatRecipientName = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return 'Recipient not provided';
+  }
+
+  return trimmed.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+};
+
 type PhotoPreviewState = {
   visible: boolean;
   uri: string | null;
@@ -200,7 +209,7 @@ export const HomeScreen: React.FC = () => {
       setPhotoPreview({
         visible: true,
         uri: parcel.photoUrl,
-        recipient: parcel.recipientName,
+        recipient: parcel.recipientName ? formatRecipientName(parcel.recipientName) : undefined,
         tracking: parcel.trackingNumber,
       });
     },
@@ -215,30 +224,19 @@ export const HomeScreen: React.FC = () => {
     const remarks = parcel.remarks?.trim();
     const tracking = parcel.trackingNumber?.trim();
     const recipient = parcel.recipientName?.trim();
-    const displayName = recipient ?? 'Recipient not provided';
+    const displayName = formatRecipientName(recipient);
     const parcelProperty = parcel.propertyName?.trim() || propertyDisplay || undefined;
     const mobileNumber = parcel.mobileNumber?.trim();
     const hasPhoto = Boolean(parcel.photoUrl);
     const loggedAt = formatTime(parcel.collectedAt ?? parcel.createdAt);
 
     const chipBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(16, 24, 40, 0.05)';
-    const badgeBackground = hasPhoto
-      ? theme.mode === 'dark'
-        ? 'rgba(59, 201, 126, 0.24)'
-        : 'rgba(59, 201, 126, 0.16)'
-      : theme.mode === 'dark'
-      ? 'rgba(77, 166, 255, 0.24)'
-      : 'rgba(77, 166, 255, 0.18)';
-    const badgeTextColor = theme.mode === 'dark' ? '#FFFFFF' : '#1F2937';
-
     const avatarInitials = displayName
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)
       .map(part => part.charAt(0).toUpperCase())
       .join('') || 'P';
-
-    const trackingHighlightColor = theme.mode === 'dark' ? 'rgba(77, 166, 255, 0.24)' : 'rgba(37, 99, 235, 0.16)';
 
     const infoRows: {label: string; value: string; highlight?: boolean; multiline?: boolean}[] = [
       {
@@ -274,17 +272,10 @@ export const HomeScreen: React.FC = () => {
             <Text style={[styles.parcelAvatarText, {color: theme.roles.text.onPrimary}]}>{avatarInitials}</Text>
           </View>
           <View style={styles.parcelHeaderContent}>
-            <Text style={[styles.parcelName, {color: theme.roles.text.primary}]} numberOfLines={1}>
-              {displayName}
-            </Text>
+            <Text style={[styles.parcelName, {color: theme.roles.text.primary}]}>{displayName}</Text>
             <View style={styles.parcelMetaRow}>
               <Text style={[styles.parcelMetaText, {color: theme.roles.text.secondary}]}>Logged {loggedAt}</Text>
             </View>
-          </View>
-          <View style={[styles.parcelStatusBadge, {backgroundColor: badgeBackground}]}>
-            <Text style={[styles.parcelStatusText, {color: badgeTextColor}]}>
-              {hasPhoto ? 'Photo logged' : 'Manual entry'}
-            </Text>
           </View>
         </View>
 
@@ -297,7 +288,6 @@ export const HomeScreen: React.FC = () => {
               <View
                 style={[
                   styles.parcelInfoValueContainer,
-                  row.highlight ? [{backgroundColor: trackingHighlightColor}, styles.parcelInfoValueHighlight] : null,
                   row.multiline ? styles.parcelInfoValueContainerMultiline : null,
                 ]}>
                 <Text
@@ -322,7 +312,7 @@ export const HomeScreen: React.FC = () => {
               onPress={() => openPhotoPreview(parcel)}
               style={[styles.viewPhotoButton, {backgroundColor: chipBackground}]}
               accessibilityRole="button"
-              accessibilityLabel={`View parcel photo${recipient ? ` for ${recipient}` : ''}`}>
+              accessibilityLabel={`View parcel photo${recipient ? ` for ${displayName}` : ''}`}>
               <Text style={[styles.viewPhotoText, {color: theme.palette.primary.main}]}>View photo</Text>
             </TouchableOpacity>
           ) : (
@@ -625,18 +615,6 @@ const styles = StyleSheet.create({
   parcelMetaText: {
     fontSize: 13,
   },
-  parcelStatusBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginLeft: 12,
-  },
-  parcelStatusText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
   parcelInfoSection: {
     marginTop: 16,
   },
@@ -663,11 +641,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     marginLeft: 12,
     alignItems: 'flex-end',
-  },
-  parcelInfoValueHighlight: {
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
   },
   parcelInfoValueContainerMultiline: {
     alignItems: 'flex-start',

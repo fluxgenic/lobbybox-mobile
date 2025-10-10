@@ -59,6 +59,15 @@ const formatDateTime = (value?: string | null) => {
   return `${datePart} · ${timePart}`;
 };
 
+const formatRecipientName = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return 'Recipient not provided';
+  }
+
+  return trimmed.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+};
+
 export const HistoryScreen: React.FC = () => {
   const {theme} = useThemeContext();
   const {user} = useAuth();
@@ -229,7 +238,7 @@ export const HistoryScreen: React.FC = () => {
         loading: true,
         sourceUrl: trimmedPhotoUrl,
         uri: null,
-        recipient: parcel.recipientName?.trim() || undefined,
+        recipient: parcel.recipientName ? formatRecipientName(parcel.recipientName) : undefined,
         tracking: parcel.trackingNumber?.trim() || undefined,
         error: null,
       });
@@ -376,7 +385,7 @@ export const HistoryScreen: React.FC = () => {
       const isPreviewLoading =
         photoPreview.visible && photoPreview.sourceUrl === trimmedPhotoUrl && photoPreview.loading;
 
-      const displayName = recipient ?? 'Recipient not provided';
+      const displayName = formatRecipientName(recipient);
       const avatarInitials = displayName
         .split(/\s+/)
         .filter(Boolean)
@@ -386,14 +395,6 @@ export const HistoryScreen: React.FC = () => {
 
       const trackingHighlightColor = theme.mode === 'dark' ? 'rgba(77, 166, 255, 0.24)' : 'rgba(37, 99, 235, 0.16)';
       const chipBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(16, 24, 40, 0.05)';
-      const badgeBackground = hasPhoto
-        ? theme.mode === 'dark'
-          ? 'rgba(59, 201, 126, 0.24)'
-          : 'rgba(59, 201, 126, 0.16)'
-        : theme.mode === 'dark'
-        ? 'rgba(77, 166, 255, 0.24)'
-        : 'rgba(77, 166, 255, 0.18)';
-      const badgeTextColor = theme.mode === 'dark' ? '#FFFFFF' : '#1F2937';
 
       const infoRows: {label: string; value: string; highlight?: boolean; multiline?: boolean}[] = [
         {
@@ -429,19 +430,12 @@ export const HistoryScreen: React.FC = () => {
               <Text style={[styles.cardAvatarText, {color: theme.roles.text.onPrimary}]}>{avatarInitials}</Text>
             </View>
             <View style={styles.cardHeaderContent}>
-              <Text style={[styles.cardTitle, {color: theme.roles.text.primary}]} numberOfLines={1}>
-                {displayName}
-              </Text>
+              <Text style={[styles.cardTitle, {color: theme.roles.text.primary}]}>{displayName}</Text>
               <View style={styles.cardMetaRow}>
                 <Text style={[styles.cardMetaText, {color: theme.roles.text.secondary}]} numberOfLines={1}>
                   {collectedAt}
                 </Text>
               </View>
-            </View>
-            <View style={[styles.cardStatusBadge, {backgroundColor: badgeBackground}]}>
-              <Text style={[styles.cardStatusText, {color: badgeTextColor}]}>
-                {hasPhoto ? 'Photo logged' : 'Manual entry'}
-              </Text>
             </View>
           </View>
 
@@ -454,7 +448,6 @@ export const HistoryScreen: React.FC = () => {
                 <View
                   style={[
                     styles.cardInfoValueContainer,
-                    row.highlight ? [{backgroundColor: trackingHighlightColor}, styles.cardInfoValueHighlight] : null,
                     row.multiline ? styles.cardInfoValueContainerMultiline : null,
                   ]}>
                   <Text
@@ -479,7 +472,7 @@ export const HistoryScreen: React.FC = () => {
                 onPress={() => handleViewPhoto(item)}
                 style={[styles.viewPhotoButton, {backgroundColor: chipBackground}]}
                 accessibilityRole="button"
-                accessibilityLabel={`View parcel photo${recipient ? ` for ${recipient}` : ''}`}>
+                accessibilityLabel={`View parcel photo${item.recipientName ? ` for ${displayName}` : ''}`}>
                 {isPreviewLoading ? (
                   <ActivityIndicator color={theme.palette.primary.main} style={styles.viewPhotoSpinner} />
                 ) : null}
@@ -694,18 +687,6 @@ const styles = StyleSheet.create({
   cardMetaText: {
     fontSize: 13,
   },
-  cardStatusBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginLeft: 12,
-  },
-  cardStatusText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
   cardInfoSection: {
     marginTop: 16,
   },
@@ -732,11 +713,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     marginLeft: 12,
     alignItems: 'flex-end',
-  },
-  cardInfoValueHighlight: {
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
   },
   cardInfoValueContainerMultiline: {
     alignItems: 'flex-start',
