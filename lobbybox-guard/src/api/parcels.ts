@@ -5,6 +5,8 @@ import {
   PaginatedResponse,
   ParcelListItem,
   ParcelOcrSuggestion,
+  ParcelReadRequest,
+  ParcelReadResponse,
   ParcelUploadRequest,
   ParcelUploadResponse,
 } from './types';
@@ -130,6 +132,12 @@ export const requestParcelUpload = async (): Promise<ParcelUploadResponse> => {
   const payload: ParcelUploadRequest = {ext: 'jpg'};
   const {data} = await api.post<ParcelUploadResponse>('/parcels/sas', payload);
   return data;
+};
+
+export const refreshParcelPhotoReadUrl = async (photoUrl: string): Promise<string> => {
+  const payload: ParcelReadRequest = {photoUrl};
+  const {data} = await api.post<ParcelReadResponse>('/parcels/sas/read', payload);
+  return data.readUrl;
 };
 
 export const createParcel = async (payload: CreateParcelRequest): Promise<CreateParcelResponse> => {
