@@ -2,11 +2,14 @@ import api from './client';
 import {
   CreateParcelRequest,
   CreateParcelResponse,
+  PaginatedResponse,
   ParcelListItem,
   ParcelOcrSuggestion,
   ParcelUploadRequest,
   ParcelUploadResponse,
 } from './types';
+
+const MAX_PAGE_REQUESTS = 25;
 
 export const fetchParcelsForDate = async (
   date: string,
@@ -24,20 +27,56 @@ export const fetchParcelsForDate = async (
   console.log('[api/parcels] fetchParcelsForDate request', requestContext);
 
   try {
-    const {data} = await api.get<ParcelListItem[]>('/parcels', {
-      params: {
-        date,
-        propertyId,
-      },
-    });
+    const aggregated: ParcelListItem[] = [];
+    let total = Number.POSITIVE_INFINITY;
+    let page = 1;
+
+    while (aggregated.length < total && page <= MAX_PAGE_REQUESTS) {
+      const {data} = await api.get<PaginatedResponse<ParcelListItem>>('/parcels/guard/today', {
+        params: {
+          date,
+          propertyId,
+          page,
+        },
+      });
+
+      aggregated.push(...data.data);
+
+      if (typeof data.total === 'number' && Number.isFinite(data.total)) {
+        total = data.total;
+      } else {
+        total = aggregated.length;
+      }
+
+      const expectedPageSize = data.pageSize ?? data.data.length;
+      const receivedPageSize = data.data.length;
+      const hasMorePages = aggregated.length < total && receivedPageSize >= expectedPageSize;
+
+      if (!hasMorePages) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    if (page > MAX_PAGE_REQUESTS) {
+      console.warn('[api/parcels] fetchParcelsForDate reached max page limit', {
+        ...requestContext,
+        maxPages: MAX_PAGE_REQUESTS,
+        aggregatedCount: aggregated.length,
+        expectedTotal: total,
+      });
+    }
 
     console.log('[api/parcels] fetchParcelsForDate response', {
       ...requestContext,
-      responseCount: data.length,
-      sampleParcelIds: data.slice(0, 3).map(parcel => parcel.id),
+      responseCount: aggregated.length,
+      total,
+      totalPagesFetched: page,
+      sampleParcelIds: aggregated.slice(0, 3).map(parcel => parcel.id),
     });
 
-    return data;
+    return aggregated;
   } catch (error) {
     console.error('[api/parcels] fetchParcelsForDate error', {
       ...requestContext,
