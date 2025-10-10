@@ -227,6 +227,7 @@ export const HomeScreen: React.FC = () => {
     const displayName = formatRecipientName(recipient);
     const parcelProperty = parcel.propertyName?.trim() || propertyDisplay || undefined;
     const mobileNumber = parcel.mobileNumber?.trim();
+    const logisticSource = parcel.logisticSource?.trim();
     const hasPhoto = Boolean(parcel.photoUrl);
     const loggedAt = formatTime(parcel.collectedAt ?? parcel.createdAt);
 
@@ -248,6 +249,10 @@ export const HomeScreen: React.FC = () => {
         label: 'Tracking number',
         value: tracking ? `#${tracking}` : 'Not provided',
         highlight: Boolean(tracking),
+      },
+      {
+        label: 'Logistic',
+        value: logisticSource ?? 'Not provided',
       },
     ];
 
