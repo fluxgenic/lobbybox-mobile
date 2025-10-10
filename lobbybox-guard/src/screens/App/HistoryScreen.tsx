@@ -384,6 +384,7 @@ export const HistoryScreen: React.FC = () => {
         .map(part => part.charAt(0).toUpperCase())
         .join('') || 'P';
 
+      const trackingHighlightColor = theme.mode === 'dark' ? 'rgba(77, 166, 255, 0.24)' : 'rgba(37, 99, 235, 0.16)';
       const chipBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(16, 24, 40, 0.05)';
       const badgeBackground = hasPhoto
         ? theme.mode === 'dark'
@@ -394,15 +395,27 @@ export const HistoryScreen: React.FC = () => {
         : 'rgba(77, 166, 255, 0.18)';
       const badgeTextColor = theme.mode === 'dark' ? '#FFFFFF' : '#1F2937';
 
-      const infoChips: {label: string; value: string}[] = [];
+      const infoRows: {label: string; value: string; highlight?: boolean; multiline?: boolean}[] = [
+        {
+          label: 'Unit / Remarks',
+          value: remarks ?? 'Not provided',
+          multiline: true,
+        },
+        {
+          label: 'Tracking number',
+          value: tracking ? `#${tracking}` : 'Not provided',
+          highlight: Boolean(tracking),
+        },
+      ];
+
       if (property) {
-        infoChips.push({label: 'Property', value: property});
+        infoRows.push({label: 'Property', value: property});
       }
       if (tenantName) {
-        infoChips.push({label: 'Tenant', value: tenantName});
+        infoRows.push({label: 'Tenant', value: tenantName});
       }
       if (contact) {
-        infoChips.push({label: 'Contact', value: contact});
+        infoRows.push({label: 'Contact', value: contact});
       }
 
       return (
@@ -423,47 +436,42 @@ export const HistoryScreen: React.FC = () => {
                 <Text style={[styles.cardMetaText, {color: theme.roles.text.secondary}]} numberOfLines={1}>
                   {collectedAt}
                 </Text>
-                {tracking ? (
-                  <View
-                    style={[styles.cardMetaChip, {backgroundColor: chipBackground}]}>
-                    <Text style={[styles.cardMetaChipText, {color: theme.roles.text.primary}]} numberOfLines={1}>
-                      #{tracking}
-                    </Text>
-                  </View>
-                ) : null}
               </View>
             </View>
             <View style={[styles.cardStatusBadge, {backgroundColor: badgeBackground}]}>
-              <Text style={[styles.cardStatusText, {color: badgeTextColor}]}> 
+              <Text style={[styles.cardStatusText, {color: badgeTextColor}]}>
                 {hasPhoto ? 'Photo logged' : 'Manual entry'}
               </Text>
             </View>
           </View>
 
-          <View style={styles.cardBody}>
-            <Text style={[styles.cardBodyLabel, {color: theme.roles.text.secondary}]}>Unit / Remarks</Text>
-            <Text style={[styles.cardBodyValue, {color: theme.roles.text.primary}]} numberOfLines={3}>
-              {remarks ?? 'Not provided'}
-            </Text>
-          </View>
-
-          {infoChips.length > 0 ? (
-            <View style={styles.cardInfoSection}>
-              {infoChips.map((chip, chipIndex) => (
+          <View style={styles.cardInfoSection}>
+            {infoRows.map((row, rowIndex) => (
+              <View
+                key={`${row.label}-${row.value}`}
+                style={[styles.cardInfoRow, rowIndex > 0 ? styles.cardInfoRowSpacing : null]}>
+                <Text style={[styles.cardInfoLabel, {color: theme.roles.text.secondary}]}>{row.label}</Text>
                 <View
-                  key={`${chip.label}-${chip.value}`}
-                  style={[styles.cardInfoRow, chipIndex > 0 ? styles.cardInfoRowSpacing : null]}>
-                  <Text style={[styles.cardInfoLabel, {color: theme.roles.text.secondary}]}>{chip.label}</Text>
+                  style={[
+                    styles.cardInfoValueContainer,
+                    row.highlight ? [{backgroundColor: trackingHighlightColor}, styles.cardInfoValueHighlight] : null,
+                    row.multiline ? styles.cardInfoValueContainerMultiline : null,
+                  ]}>
                   <Text
-                    style={[styles.cardInfoValue, {color: theme.roles.text.primary}]}
-                    numberOfLines={1}
+                    style={[
+                      styles.cardInfoValue,
+                      {color: theme.roles.text.primary},
+                      row.highlight ? {color: theme.palette.primary.main} : null,
+                      row.multiline ? styles.cardInfoValueMultiline : null,
+                    ]}
+                    numberOfLines={row.multiline ? 3 : 1}
                     ellipsizeMode="tail">
-                    {chip.value}
+                    {row.value}
                   </Text>
                 </View>
-              ))}
-            </View>
-          ) : null}
+              </View>
+            ))}
+          </View>
 
           <View style={[styles.cardFooter, {borderTopColor: theme.roles.card.border}]}>
             {hasPhoto ? (
@@ -686,16 +694,6 @@ const styles = StyleSheet.create({
   cardMetaText: {
     fontSize: 13,
   },
-  cardMetaChip: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginLeft: 8,
-  },
-  cardMetaChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
   cardStatusBadge: {
     borderRadius: 999,
     paddingHorizontal: 12,
@@ -708,25 +706,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  cardBody: {
-    marginTop: 16,
-  },
-  cardBodyLabel: {
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 4,
-  },
-  cardBodyValue: {
-    fontSize: 15,
-    lineHeight: 21,
-  },
   cardInfoSection: {
-    marginTop: 14,
+    marginTop: 16,
   },
   cardInfoRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   cardInfoRowSpacing: {
@@ -736,14 +721,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
+    flexShrink: 0,
   },
   cardInfoValue: {
     fontSize: 15,
     fontWeight: '600',
-    marginLeft: 12,
-    flex: 1,
     textAlign: 'right',
+  },
+  cardInfoValueContainer: {
     flexShrink: 1,
+    marginLeft: 12,
+    alignItems: 'flex-end',
+  },
+  cardInfoValueHighlight: {
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  cardInfoValueContainerMultiline: {
+    alignItems: 'flex-start',
+  },
+  cardInfoValueMultiline: {
+    textAlign: 'left',
   },
   cardFooter: {
     marginTop: 18,
