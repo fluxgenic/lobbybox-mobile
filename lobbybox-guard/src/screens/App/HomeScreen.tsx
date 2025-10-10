@@ -238,12 +238,27 @@ export const HomeScreen: React.FC = () => {
       .map(part => part.charAt(0).toUpperCase())
       .join('') || 'P';
 
-    const infoChips: {label: string; value: string}[] = [];
+    const trackingHighlightColor = theme.mode === 'dark' ? 'rgba(77, 166, 255, 0.24)' : 'rgba(37, 99, 235, 0.16)';
+
+    const infoRows: {label: string; value: string; highlight?: boolean; multiline?: boolean}[] = [
+      {
+        label: 'Unit / Remarks',
+        value: remarks ?? 'Not provided',
+        multiline: true,
+      },
+      {
+        label: 'Tracking number',
+        value: tracking ? `#${tracking}` : 'Not provided',
+        highlight: Boolean(tracking),
+      },
+    ];
+
     if (parcelProperty) {
-      infoChips.push({label: 'Property', value: parcelProperty});
+      infoRows.push({label: 'Property', value: parcelProperty});
     }
+
     if (mobileNumber) {
-      infoChips.push({label: 'Contact', value: mobileNumber});
+      infoRows.push({label: 'Contact', value: mobileNumber});
     }
 
     return (
@@ -264,56 +279,42 @@ export const HomeScreen: React.FC = () => {
             </Text>
             <View style={styles.parcelMetaRow}>
               <Text style={[styles.parcelMetaText, {color: theme.roles.text.secondary}]}>Logged {loggedAt}</Text>
-              {tracking ? (
-                <View
-                  style={[
-                    styles.parcelMetaChip,
-                    {
-                      backgroundColor: chipBackground,
-                      borderColor: theme.roles.card.border,
-                    },
-                  ]}>
-                  <Text style={[styles.parcelMetaChipText, {color: theme.roles.text.primary}]} numberOfLines={1}>
-                    #{tracking}
-                  </Text>
-                </View>
-              ) : null}
             </View>
           </View>
           <View style={[styles.parcelStatusBadge, {backgroundColor: badgeBackground}]}>
-            <Text style={[styles.parcelStatusText, {color: badgeTextColor}]}> 
+            <Text style={[styles.parcelStatusText, {color: badgeTextColor}]}>
               {hasPhoto ? 'Photo logged' : 'Manual entry'}
             </Text>
           </View>
         </View>
 
-        <View style={styles.parcelBody}>
-          <Text style={[styles.parcelDetailLabel, {color: theme.roles.text.secondary}]}>Unit / Remarks</Text>
-          <Text style={[styles.parcelDetailValue, {color: theme.roles.text.primary}]} numberOfLines={2}>
-            {remarks ?? 'Not provided'}
-          </Text>
-        </View>
-
-        {infoChips.length > 0 ? (
-          <View style={styles.parcelChipRow}>
-            {infoChips.map(chip => (
+        <View style={styles.parcelInfoSection}>
+          {infoRows.map((row, rowIndex) => (
+            <View
+              key={`${row.label}-${row.value}`}
+              style={[styles.parcelInfoRow, rowIndex > 0 ? styles.parcelInfoRowSpacing : null]}>
+              <Text style={[styles.parcelInfoLabel, {color: theme.roles.text.secondary}]}>{row.label}</Text>
               <View
-                key={`${chip.label}-${chip.value}`}
                 style={[
-                  styles.parcelChip,
-                  {
-                    backgroundColor: chipBackground,
-                    borderColor: theme.roles.card.border,
-                  },
+                  styles.parcelInfoValueContainer,
+                  row.highlight ? [{backgroundColor: trackingHighlightColor}, styles.parcelInfoValueHighlight] : null,
+                  row.multiline ? styles.parcelInfoValueContainerMultiline : null,
                 ]}>
-                <Text style={[styles.parcelChipLabel, {color: theme.roles.text.secondary}]}>{chip.label}</Text>
-                <Text style={[styles.parcelChipValue, {color: theme.roles.text.primary}]} numberOfLines={1}>
-                  {chip.value}
+                <Text
+                  style={[
+                    styles.parcelInfoValue,
+                    {color: theme.roles.text.primary},
+                    row.highlight ? {color: theme.palette.primary.main} : null,
+                    row.multiline ? styles.parcelInfoValueMultiline : null,
+                  ]}
+                  numberOfLines={row.multiline ? 3 : 1}
+                  ellipsizeMode="tail">
+                  {row.value}
                 </Text>
               </View>
-            ))}
-          </View>
-        ) : null}
+            </View>
+          ))}
+        </View>
 
         <View style={[styles.cardFooter, {borderTopColor: theme.roles.card.border}]}>
           {hasPhoto ? (
@@ -624,17 +625,6 @@ const styles = StyleSheet.create({
   parcelMetaText: {
     fontSize: 13,
   },
-  parcelMetaChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginLeft: 8,
-  },
-  parcelMetaChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
   parcelStatusBadge: {
     borderRadius: 999,
     paddingHorizontal: 12,
@@ -647,42 +637,43 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  parcelBody: {
+  parcelInfoSection: {
     marginTop: 16,
   },
-  parcelDetailLabel: {
-    fontSize: 12,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  parcelDetailValue: {
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  parcelChipRow: {
+  parcelInfoRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 14,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
   },
-  parcelChip: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    maxWidth: '100%',
-    marginRight: 10,
-    marginBottom: 10,
+  parcelInfoRowSpacing: {
+    marginTop: 10,
   },
-  parcelChipLabel: {
-    fontSize: 11,
+  parcelInfoLabel: {
+    fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    marginBottom: 4,
+    flexShrink: 0,
   },
-  parcelChipValue: {
-    fontSize: 14,
+  parcelInfoValue: {
+    fontSize: 15,
     fontWeight: '600',
+    textAlign: 'right',
+  },
+  parcelInfoValueContainer: {
+    flexShrink: 1,
+    marginLeft: 12,
+    alignItems: 'flex-end',
+  },
+  parcelInfoValueHighlight: {
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  parcelInfoValueContainerMultiline: {
+    alignItems: 'flex-start',
+  },
+  parcelInfoValueMultiline: {
+    textAlign: 'left',
   },
   cardFooter: {
     marginTop: 18,

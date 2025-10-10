@@ -94,7 +94,7 @@ export const ChangePasswordScreen: React.FC = () => {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer style={styles.screen}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -113,13 +113,16 @@ export const ChangePasswordScreen: React.FC = () => {
               secureTextEntry
               placeholder="Enter current password"
               placeholderTextColor={theme.roles.input.placeholder}
-              style={[styles.input, {borderColor: theme.roles.input.border, color: theme.roles.input.text}]}
+              style={[
+                styles.input,
+                {
+                  borderColor: errors.currentPassword ? theme.roles.status.error : theme.roles.input.border,
+                  color: theme.roles.input.text,
+                },
+              ]}
               onFocus={() => setErrors(prev => ({...prev, currentPassword: undefined}))}
               accessibilityLabel="Current password"
             />
-            {errors.currentPassword ? (
-              <Text style={[styles.error, {color: theme.roles.status.error}]}>{errors.currentPassword}</Text>
-            ) : null}
           </View>
 
           <View style={styles.fieldGroup}>
@@ -130,13 +133,16 @@ export const ChangePasswordScreen: React.FC = () => {
               secureTextEntry
               placeholder="Enter new password"
               placeholderTextColor={theme.roles.input.placeholder}
-              style={[styles.input, {borderColor: theme.roles.input.border, color: theme.roles.input.text}]}
+              style={[
+                styles.input,
+                {
+                  borderColor: errors.newPassword ? theme.roles.status.error : theme.roles.input.border,
+                  color: theme.roles.input.text,
+                },
+              ]}
               onFocus={() => setErrors(prev => ({...prev, newPassword: undefined}))}
               accessibilityLabel="New password"
             />
-            {errors.newPassword ? (
-              <Text style={[styles.error, {color: theme.roles.status.error}]}>{errors.newPassword}</Text>
-            ) : null}
           </View>
 
           <View style={styles.fieldGroup}>
@@ -147,13 +153,16 @@ export const ChangePasswordScreen: React.FC = () => {
               secureTextEntry
               placeholder="Re-enter new password"
               placeholderTextColor={theme.roles.input.placeholder}
-              style={[styles.input, {borderColor: theme.roles.input.border, color: theme.roles.input.text}]}
+              style={[
+                styles.input,
+                {
+                  borderColor: errors.confirmPassword ? theme.roles.status.error : theme.roles.input.border,
+                  color: theme.roles.input.text,
+                },
+              ]}
               onFocus={() => setErrors(prev => ({...prev, confirmPassword: undefined}))}
               accessibilityLabel="Confirm new password"
             />
-            {errors.confirmPassword ? (
-              <Text style={[styles.error, {color: theme.roles.status.error}]}>{errors.confirmPassword}</Text>
-            ) : null}
           </View>
 
           <Button
@@ -169,13 +178,15 @@ export const ChangePasswordScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    paddingTop: 10,
+    paddingHorizontal: 10,
+  },
   flex: {
     flex: 1,
   },
   content: {
-    paddingTop: 10,
     paddingBottom: 24,
-    paddingHorizontal: 10,
     gap: 20,
   },
   fieldGroup: {
@@ -190,9 +201,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-  },
-  error: {
-    fontSize: 13,
   },
 });
 
