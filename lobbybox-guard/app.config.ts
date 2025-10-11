@@ -45,9 +45,8 @@ export default ({config}: ConfigContext): ExpoConfig => {
     buildNumber: Number.isNaN(buildNumberValue) ? buildNumberRaw : String(buildNumberValue),
   };
 
-  if (process.env.EAS_PROJECT_ID) {
-    extra.eas = {projectId: process.env.EAS_PROJECT_ID};
-  }
+  const easProjectId = process.env.EAS_PROJECT_ID ?? 'd5e519a8-f490-4927-ae88-276b04268540';
+  extra.eas = {projectId: easProjectId};
 
   const expoConfig: ExpoConfig = {
     ...config,
