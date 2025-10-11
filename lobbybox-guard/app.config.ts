@@ -75,6 +75,7 @@ export default ({config}: ConfigContext): ExpoConfig => {
       },
       versionCode: androidVersionCode,
       permissions: ['CAMERA'],
+      package: "com.fluxgenic.lobbyboxguard"
     },
     web: {
       bundler: 'metro',
