@@ -52,6 +52,15 @@ const formatRecipientName = (value?: string | null) => {
   return trimmed.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
 };
 
+const formatCollectorName = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+};
+
 type PhotoPreviewState = {
   visible: boolean;
   loading: boolean;
@@ -59,6 +68,7 @@ type PhotoPreviewState = {
   uri: string | null;
   recipient?: string | null;
   tracking?: string | null;
+  collectedBy?: string | null;
   error: ParsedApiError | null;
 };
 
@@ -69,6 +79,7 @@ const initialPhotoPreviewState: PhotoPreviewState = {
   uri: null,
   recipient: undefined,
   tracking: undefined,
+  collectedBy: undefined,
   error: null,
 };
 
@@ -237,6 +248,9 @@ export const HomeScreen: React.FC = () => {
         return;
       }
 
+      const collectorName = formatCollectorName(
+        parcel.collectedByUserDisplayName ?? parcel.collectedByUserName ?? undefined,
+      );
       setPhotoPreview({
         visible: true,
         loading: true,
@@ -244,6 +258,7 @@ export const HomeScreen: React.FC = () => {
         uri: null,
         recipient: parcel.recipientName ? formatRecipientName(parcel.recipientName) : undefined,
         tracking: parcel.trackingNumber,
+        collectedBy: collectorName ?? undefined,
         error: null,
       });
       loadPhotoPreview(trimmedPhotoUrl);
@@ -302,6 +317,15 @@ export const HomeScreen: React.FC = () => {
       .map(part => part.charAt(0).toUpperCase())
       .join('') || 'P';
 
+    const collectorName = formatCollectorName(
+      parcel.collectedByUserDisplayName ?? parcel.collectedByUserName ?? undefined,
+    );
+    const handledByText = collectorName
+      ? `Handled by ${collectorName}`
+      : parcel.collectedByUserId
+        ? 'Handled by guard'
+        : null;
+
     const infoRows: InfoRow[] = [
       {
         label: 'Unit / Remarks',
@@ -329,6 +353,11 @@ export const HomeScreen: React.FC = () => {
       });
     }
 
+    const metaItems = [`Logged ${loggedAt}`];
+    if (collectorName) {
+      metaItems.push(`Collected by ${collectorName}`);
+    }
+
     return (
       <View
         key={parcel.id}
@@ -344,7 +373,12 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.parcelHeaderContent}>
             <Text style={[styles.parcelName, {color: theme.roles.text.primary}]}>{displayName}</Text>
             <View style={styles.parcelMetaRow}>
-              <Text style={[styles.parcelMetaText, {color: theme.roles.text.secondary}]}>Logged {loggedAt}</Text>
+              <Text
+                style={[styles.parcelMetaText, {color: theme.roles.text.secondary}]}
+                numberOfLines={2}
+                ellipsizeMode="tail">
+                {metaItems.join(' · ')}
+              </Text>
             </View>
           </View>
         </View>
@@ -408,8 +442,8 @@ export const HomeScreen: React.FC = () => {
           ) : (
             <Text style={[styles.parcelFooterNote, {color: theme.roles.text.secondary}]}>No image to display</Text>
           )}
-          {parcel.collectedByUserId ? (
-            <Text style={[styles.cardFooterMeta, {color: theme.roles.text.secondary}]}>Handled by guard</Text>
+          {handledByText ? (
+            <Text style={[styles.cardFooterMeta, {color: theme.roles.text.secondary}]}>{handledByText}</Text>
           ) : null}
         </View>
       </View>
@@ -517,8 +551,11 @@ export const HomeScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={closePhotoPreview}>
         <View style={styles.modalBackdrop}>
-          <View style={[styles.modalContent, {backgroundColor: theme.roles.card.background}]}> 
-            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+          <View style={[styles.modalContent, {backgroundColor: theme.roles.card.background}]}>
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              alwaysBounceVertical={false}>
               <Text style={[styles.modalTitle, {color: theme.roles.text.primary}]}>Parcel photo</Text>
               {photoPreview.recipient ? (
                 <Text style={[styles.modalMeta, {color: theme.roles.text.secondary}]}>Recipient: {photoPreview.recipient}</Text>
@@ -537,6 +574,11 @@ export const HomeScreen: React.FC = () => {
               ) : (
                 <Text style={[styles.modalMeta, {color: theme.roles.status.error}]}>No image to display</Text>
               )}
+              {photoPreview.collectedBy ? (
+                <Text style={[styles.modalCollector, {color: theme.roles.text.secondary}]}>
+                  Collected by {photoPreview.collectedBy}
+                </Text>
+              ) : null}
             </ScrollView>
             <Button title="Close" onPress={closePhotoPreview} style={styles.modalButton} />
           </View>
@@ -777,17 +819,21 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 24,
+    backgroundColor: 'rgba(0,0,0,0.75)',
   },
   modalContent: {
-    borderRadius: 16,
-    padding: 20,
-    maxHeight: '90%',
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 48,
+    paddingBottom: 32,
+    justifyContent: 'space-between',
+  },
+  modalScroll: {
+    flex: 1,
   },
   modalScrollContent: {
-    alignItems: 'center',
+    paddingBottom: 32,
+    flexGrow: 1,
   },
   modalTitle: {
     fontSize: 18,
@@ -804,13 +850,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalImage: {
-    width: 260,
-    height: 260,
-    borderRadius: 12,
-    marginTop: 12,
+    width: '100%',
+    aspectRatio: 0.75,
+    borderRadius: 16,
+    marginTop: 24,
     backgroundColor: 'black',
   },
-  modalButton: {
+  modalCollector: {
+    fontSize: 14,
     marginTop: 16,
+  },
+  modalButton: {
+    marginTop: 24,
   },
 });

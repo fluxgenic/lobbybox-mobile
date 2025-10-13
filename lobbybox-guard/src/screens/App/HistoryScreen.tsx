@@ -31,6 +31,7 @@ type PhotoPreviewState = {
   uri: string | null;
   recipient?: string;
   tracking?: string;
+  collectedBy?: string | null;
   error: ParsedApiError | null;
 };
 
@@ -41,6 +42,7 @@ const initialPreviewState: PhotoPreviewState = {
   uri: null,
   recipient: undefined,
   tracking: undefined,
+  collectedBy: undefined,
   error: null,
 };
 
@@ -65,6 +67,15 @@ const formatRecipientName = (value?: string | null) => {
   const trimmed = value?.trim();
   if (!trimmed) {
     return 'Recipient not provided';
+  }
+
+  return trimmed.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+};
+
+const formatCollectorName = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
   }
 
   return trimmed.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
@@ -240,6 +251,9 @@ export const HistoryScreen: React.FC = () => {
         return;
       }
 
+      const collectorName = formatCollectorName(
+        parcel.collectedByUserDisplayName ?? parcel.collectedByUserName ?? undefined,
+      );
       setPhotoPreview({
         visible: true,
         loading: true,
@@ -247,6 +261,7 @@ export const HistoryScreen: React.FC = () => {
         uri: null,
         recipient: parcel.recipientName ? formatRecipientName(parcel.recipientName) : undefined,
         tracking: parcel.trackingNumber?.trim() || undefined,
+        collectedBy: collectorName ?? undefined,
         error: null,
       });
       loadPhotoPreview(trimmedPhotoUrl);
@@ -422,6 +437,14 @@ export const HistoryScreen: React.FC = () => {
         photoPreview.visible && photoPreview.sourceUrl === trimmedPhotoUrl && photoPreview.loading;
 
       const displayName = formatRecipientName(recipient);
+      const collectorName = formatCollectorName(
+        item.collectedByUserDisplayName ?? item.collectedByUserName ?? undefined,
+      );
+      const handledByText = collectorName
+        ? `Handled by ${collectorName}`
+        : item.collectedByUserId
+          ? 'Handled by guard'
+          : null;
       const avatarInitials = displayName
         .split(/\s+/)
         .filter(Boolean)
@@ -429,8 +452,11 @@ export const HistoryScreen: React.FC = () => {
         .map(part => part.charAt(0).toUpperCase())
         .join('') || 'P';
 
-      const trackingHighlightColor = theme.mode === 'dark' ? 'rgba(77, 166, 255, 0.24)' : 'rgba(37, 99, 235, 0.16)';
       const chipBackground = theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(16, 24, 40, 0.05)';
+      const metaItems = [collectedAt];
+      if (collectorName) {
+        metaItems.push(`Collected by ${collectorName}`);
+      }
 
       const infoRows: InfoRow[] = [
         {
@@ -475,8 +501,11 @@ export const HistoryScreen: React.FC = () => {
             <View style={styles.cardHeaderContent}>
               <Text style={[styles.cardTitle, {color: theme.roles.text.primary}]}>{displayName}</Text>
               <View style={styles.cardMetaRow}>
-                <Text style={[styles.cardMetaText, {color: theme.roles.text.secondary}]} numberOfLines={1}>
-                  {collectedAt}
+                <Text
+                  style={[styles.cardMetaText, {color: theme.roles.text.secondary}]}
+                  numberOfLines={2}
+                  ellipsizeMode="tail">
+                  {metaItems.join(' · ')}
                 </Text>
               </View>
             </View>
@@ -544,8 +573,8 @@ export const HistoryScreen: React.FC = () => {
             ) : (
               <Text style={[styles.cardFooterNote, {color: theme.roles.text.secondary}]}>No image to display</Text>
             )}
-            {item.collectedByUserId ? (
-              <Text style={[styles.cardFooterMeta, {color: theme.roles.text.secondary}]}>Handled by guard</Text>
+            {handledByText ? (
+              <Text style={[styles.cardFooterMeta, {color: theme.roles.text.secondary}]}>{handledByText}</Text>
             ) : null}
           </View>
         </View>
@@ -601,7 +630,10 @@ export const HistoryScreen: React.FC = () => {
               styles.modalContent,
               {backgroundColor: theme.roles.card.background, borderColor: theme.roles.card.border},
             ]}>
-            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              alwaysBounceVertical={false}>
               <Text style={[styles.modalTitle, {color: theme.roles.text.primary}]}>Parcel photo</Text>
               {photoPreview.recipient ? (
                 <Text style={[styles.modalMeta, {color: theme.roles.text.secondary}]}>Recipient: {photoPreview.recipient}</Text>
@@ -620,14 +652,22 @@ export const HistoryScreen: React.FC = () => {
               ) : (
                 <Text style={[styles.modalError, {color: theme.roles.status.error}]}>No image to display</Text>
               )}
+              {photoPreview.collectedBy ? (
+                <Text style={[styles.modalCollector, {color: theme.roles.text.secondary}]}>Collected by {photoPreview.collectedBy}</Text>
+              ) : null}
             </ScrollView>
             <View
               style={[
-                styles.modalButtonRow,
+                styles.modalActions,
                 {borderTopColor: theme.roles.card.border, backgroundColor: theme.roles.card.background},
               ]}>
               {photoPreview.error ? (
-                <Button title="Retry" onPress={handleRetryPreview} variant="secondary" style={styles.modalRetryButton} />
+                <Button
+                  title="Retry"
+                  onPress={handleRetryPreview}
+                  variant="secondary"
+                  style={styles.modalRetryButton}
+                />
               ) : null}
               <Button title="Close" onPress={closePhotoPreview} />
             </View>
@@ -857,18 +897,22 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'center',
-    padding: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
   },
   modalContent: {
-    borderRadius: 24,
+    flex: 1,
     borderWidth: 1,
-    overflow: 'hidden',
-    maxHeight: '90%',
+    paddingHorizontal: 24,
+    paddingTop: 48,
+    paddingBottom: 24,
+    justifyContent: 'space-between',
+  },
+  modalScroll: {
+    flex: 1,
   },
   modalScrollContent: {
-    padding: 24,
+    paddingBottom: 32,
+    flexGrow: 1,
   },
   modalTitle: {
     fontSize: 20,
@@ -876,7 +920,7 @@ const styles = StyleSheet.create({
   },
   modalMeta: {
     fontSize: 14,
-    marginTop: 8,
+    marginTop: 12,
   },
   modalLoader: {
     marginTop: 32,
@@ -885,22 +929,27 @@ const styles = StyleSheet.create({
   },
   modalImage: {
     width: '100%',
-    height: 320,
-    marginTop: 24,
-    borderRadius: 12,
+    aspectRatio: 0.75,
+    marginTop: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(0, 0, 0, 0.08)',
+  },
+  modalCollector: {
+    fontSize: 14,
+    marginTop: 20,
   },
   modalError: {
     marginTop: 32,
     fontSize: 14,
     textAlign: 'center',
   },
-  modalButtonRow: {
+  modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    padding: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
+    marginTop: 24,
   },
   modalRetryButton: {
     marginRight: 12,
