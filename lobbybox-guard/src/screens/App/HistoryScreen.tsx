@@ -32,6 +32,9 @@ type PhotoPreviewState = {
   recipient?: string;
   tracking?: string;
   collectedBy?: string | null;
+  personPhotoSourceUrl?: string | null;
+  personPhotoUrl?: string | null;
+  personPhotoLoading: boolean;
   error: ParsedApiError | null;
 };
 
@@ -43,6 +46,9 @@ const initialPreviewState: PhotoPreviewState = {
   recipient: undefined,
   tracking: undefined,
   collectedBy: undefined,
+  personPhotoSourceUrl: undefined,
+  personPhotoUrl: undefined,
+  personPhotoLoading: false,
   error: null,
 };
 
@@ -244,6 +250,28 @@ export const HistoryScreen: React.FC = () => {
     [],
   );
 
+  const loadCollectorPhotoPreview = useCallback(async (photoUrl: string) => {
+    console.log('[HistoryScreen] Loading collector photo preview URL', {photoUrl});
+    try {
+      const refreshedUrl = await refreshParcelPhotoReadUrl(photoUrl);
+      console.log('[HistoryScreen] Collector photo preview URL refreshed', {refreshedUrl});
+      setPhotoPreview(prev => {
+        if (prev.personPhotoSourceUrl?.trim() !== photoUrl.trim()) {
+          return prev;
+        }
+        return {...prev, personPhotoUrl: refreshedUrl, personPhotoLoading: false};
+      });
+    } catch (err) {
+      console.error('[HistoryScreen] Failed to refresh collector photo preview URL', err);
+      setPhotoPreview(prev => {
+        if (prev.personPhotoSourceUrl?.trim() !== photoUrl.trim()) {
+          return prev;
+        }
+        return {...prev, personPhotoUrl: null, personPhotoLoading: false};
+      });
+    }
+  }, []);
+
   const handleViewPhoto = useCallback(
     (parcel: ParcelListItem) => {
       const trimmedPhotoUrl = parcel.photoUrl?.trim();
@@ -254,6 +282,8 @@ export const HistoryScreen: React.FC = () => {
       const collectorName = formatCollectorName(
         parcel.collectedByUserDisplayName ?? parcel.collectedByUserName ?? undefined,
       );
+      const collectorPhotoUrl = parcel.personPhotoUrl?.trim();
+
       setPhotoPreview({
         visible: true,
         loading: true,
@@ -262,11 +292,17 @@ export const HistoryScreen: React.FC = () => {
         recipient: parcel.recipientName ? formatRecipientName(parcel.recipientName) : undefined,
         tracking: parcel.trackingNumber?.trim() || undefined,
         collectedBy: collectorName ?? undefined,
+        personPhotoSourceUrl: collectorPhotoUrl || undefined,
+        personPhotoUrl: collectorPhotoUrl ? null : undefined,
+        personPhotoLoading: Boolean(collectorPhotoUrl),
         error: null,
       });
       loadPhotoPreview(trimmedPhotoUrl);
+      if (collectorPhotoUrl) {
+        loadCollectorPhotoPreview(collectorPhotoUrl);
+      }
     },
-    [loadPhotoPreview],
+    [loadCollectorPhotoPreview, loadPhotoPreview],
   );
 
   const handleRetryPreview = useCallback(() => {
@@ -652,9 +688,49 @@ export const HistoryScreen: React.FC = () => {
               ) : (
                 <Text style={[styles.modalError, {color: theme.roles.status.error}]}>No image to display</Text>
               )}
-              {photoPreview.collectedBy ? (
-                <Text style={[styles.modalCollector, {color: theme.roles.text.secondary}]}>Collected by {photoPreview.collectedBy}</Text>
-              ) : null}
+              <View
+                style={[
+                  styles.collectorSection,
+                  {
+                    borderColor: theme.roles.card.border,
+                    backgroundColor:
+                      theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(16, 24, 40, 0.04)',
+                  },
+                ]}>
+                <Text style={[styles.collectorTitle, {color: theme.roles.text.primary}]}>Parcel collector</Text>
+                {photoPreview.personPhotoUrl ? (
+                  <Image source={{uri: photoPreview.personPhotoUrl}} style={styles.collectorImage} resizeMode="cover" />
+                ) : photoPreview.personPhotoLoading ? (
+                  <View
+                    style={[
+                      styles.collectorPlaceholder,
+                      styles.collectorLoading,
+                      {
+                        borderColor: theme.roles.card.border,
+                        backgroundColor:
+                          theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(16, 24, 40, 0.02)',
+                      },
+                    ]}>
+                    <ActivityIndicator color={theme.roles.text.secondary} style={styles.collectorLoadingSpinner} />
+                    <Text style={[styles.collectorPlaceholderText, {color: theme.roles.text.secondary}]}>Loading collector photo…</Text>
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.collectorPlaceholder,
+                      {
+                        borderColor: theme.roles.card.border,
+                        backgroundColor:
+                          theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(16, 24, 40, 0.02)',
+                      },
+                    ]}>
+                    <Text style={[styles.collectorPlaceholderText, {color: theme.roles.text.secondary}]}>No collector photo available</Text>
+                  </View>
+                )}
+                {photoPreview.collectedBy ? (
+                  <Text style={[styles.collectorMeta, {color: theme.roles.text.secondary}]}>Collected by {photoPreview.collectedBy}</Text>
+                ) : null}
+              </View>
             </ScrollView>
             <View
               style={[
@@ -934,9 +1010,45 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
-  modalCollector: {
+  collectorSection: {
+    marginTop: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderRadius: 16,
+  },
+  collectorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  collectorImage: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    borderRadius: 12,
+    marginTop: 12,
+    backgroundColor: 'black',
+  },
+  collectorPlaceholder: {
+    marginTop: 12,
+    paddingVertical: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  collectorLoading: {
+    paddingVertical: 20,
+  },
+  collectorLoadingSpinner: {
+    marginBottom: 12,
+  },
+  collectorPlaceholderText: {
     fontSize: 14,
-    marginTop: 20,
+    textAlign: 'center',
+  },
+  collectorMeta: {
+    fontSize: 14,
+    marginTop: 12,
   },
   modalError: {
     marginTop: 32,
