@@ -30,6 +30,7 @@ export type ParcelListItem = {
   tenantId?: string | null;
   collectedByUserId?: string | null;
   photoUrl?: string | null;
+  personPhotoUrl?: string | null;
   remarks?: string | null;
   mobileNumber?: string | null;
   ocrText?: string | null;
@@ -49,15 +50,19 @@ export type PaginatedResponse<T> = {
   total: number;
 };
 
+export type ParcelUploadCategory = 'parcel' | 'person';
+
 export type ParcelUploadRequest = {
-  ext: 'jpg';
+  propertyId: string;
+  category?: ParcelUploadCategory;
+  ext?: 'jpg' | 'png';
 };
 
 export type ParcelUploadResponse = {
   uploadUrl: string;
   blobUrl: string;
-  readUrl:string;
-  blobName:string,
+  readUrl?: string;
+  blobName: string;
 };
 
 export type ParcelReadRequest = {
@@ -71,6 +76,7 @@ export type ParcelReadResponse = {
 export type CreateParcelRequest = {
   propertyId: string;
   photoUrl?: string | null;
+  personPhotoUrl?: string | null;
   remarks?: string | null;
   mobileNumber?: string | null;
   ocrText?: string | null;

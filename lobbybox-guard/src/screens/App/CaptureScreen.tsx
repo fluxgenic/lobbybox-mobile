@@ -17,7 +17,7 @@ import {
 import { CameraView, CameraViewRef, useCameraPermissions } from 'expo-camera';
 import { createUploadTask, getInfoAsync } from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Edge, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { ScreenContainer } from '@/components/ScreenContainer';
@@ -44,7 +44,7 @@ const LONGEST_EDGE_TARGET = 1400;
 let loggedManipulatorUnavailable = false;
 let loggedManipulatorFailure = false;
 
-type Step = 'camera' | 'preview' | 'details' | 'success';
+type Step = 'parcelCamera' | 'parcelPreview' | 'details' | 'personCamera' | 'personPreview' | 'success';
 
 type CapturedPhoto = {
   uri: string;
@@ -129,14 +129,19 @@ export const CaptureScreen: React.FC = () => {
   const cameraRef = useRef<CameraViewRef>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const insets = useSafeAreaInsets();
-  const [step, setStep] = useState<Step>('camera');
-  const [photo, setPhoto] = useState<CapturedPhoto | null>(null);
+  const [step, setStep] = useState<Step>('parcelCamera');
+  const [parcelPhoto, setParcelPhoto] = useState<CapturedPhoto | null>(null);
+  const [personPhoto, setPersonPhoto] = useState<CapturedPhoto | null>(null);
   const [formState, setFormState] = useState<ParcelFormState>(() => createBlankFormState());
   const [formErrors, setFormErrors] = useState<ParcelFormErrors>({});
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<ParsedApiError | null>(null);
+  const [parcelPhotoUrl, setParcelPhotoUrl] = useState<string | null>(null);
+  const [personPhotoUrl, setPersonPhotoUrl] = useState<string | null>(null);
+  const [parcelUploadProgress, setParcelUploadProgress] = useState(0);
+  const [personUploadProgress, setPersonUploadProgress] = useState(0);
+  const [isParcelUploading, setIsParcelUploading] = useState(false);
+  const [isPersonUploading, setIsPersonUploading] = useState(false);
+  const [parcelUploadError, setParcelUploadError] = useState<ParsedApiError | null>(null);
+  const [personUploadError, setPersonUploadError] = useState<ParsedApiError | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -190,12 +195,17 @@ export const CaptureScreen: React.FC = () => {
 
   const resetFlow = useCallback(() => {
     setEntryMode('photo');
-    setStep('camera');
-    setPhoto(null);
-    setPhotoUrl(null);
-    setUploadProgress(0);
-    setUploadError(null);
-    setIsUploading(false);
+    setStep('parcelCamera');
+    setParcelPhoto(null);
+    setParcelPhotoUrl(null);
+    setPersonPhoto(null);
+    setPersonPhotoUrl(null);
+    setParcelUploadProgress(0);
+    setPersonUploadProgress(0);
+    setParcelUploadError(null);
+    setPersonUploadError(null);
+    setIsParcelUploading(false);
+    setIsPersonUploading(false);
     setIsSaving(false);
     setFormState(createBlankFormState());
     setFormErrors({});
@@ -206,11 +216,16 @@ export const CaptureScreen: React.FC = () => {
   const beginManualEntry = useCallback(() => {
     setEntryMode('manual');
     setStep('details');
-    setPhoto(null);
-    setPhotoUrl(null);
-    setUploadProgress(0);
-    setUploadError(null);
-    setIsUploading(false);
+    setParcelPhoto(null);
+    setParcelPhotoUrl(null);
+    setPersonPhoto(null);
+    setPersonPhotoUrl(null);
+    setParcelUploadProgress(0);
+    setPersonUploadProgress(0);
+    setParcelUploadError(null);
+    setPersonUploadError(null);
+    setIsParcelUploading(false);
+    setIsPersonUploading(false);
     setIsSaving(false);
     setFormState(createBlankFormState());
     setFormErrors({});
@@ -220,12 +235,17 @@ export const CaptureScreen: React.FC = () => {
 
   const returnToCamera = useCallback(() => {
     setEntryMode('photo');
-    setStep('camera');
-    setPhoto(null);
-    setPhotoUrl(null);
-    setUploadProgress(0);
-    setUploadError(null);
-    setIsUploading(false);
+    setStep('parcelCamera');
+    setParcelPhoto(null);
+    setParcelPhotoUrl(null);
+    setParcelUploadProgress(0);
+    setParcelUploadError(null);
+    setIsParcelUploading(false);
+    setPersonPhoto(null);
+    setPersonPhotoUrl(null);
+    setPersonUploadProgress(0);
+    setPersonUploadError(null);
+    setIsPersonUploading(false);
     setIsSaving(false);
     setFormErrors({});
     setFormState(createBlankFormState());
@@ -367,8 +387,18 @@ export const CaptureScreen: React.FC = () => {
     if (!cameraRef.current || isCapturing) {
       return;
     }
+
+    const isParcelCapture = step === 'parcelCamera';
+    const isPersonCapture = step === 'personCamera';
+
+    if (!isParcelCapture && !isPersonCapture) {
+      return;
+    }
+
     try {
-      setEntryMode('photo');
+      if (isParcelCapture) {
+        setEntryMode('photo');
+      }
       setIsCapturing(true);
       setIsProcessingPhoto(true);
       const result = await cameraRef.current.takePictureAsync({
@@ -376,11 +406,21 @@ export const CaptureScreen: React.FC = () => {
         skipProcessing: true,
       });
       const optimized = await optimizePhoto(result.uri, result.width, result.height);
-      setPhoto(optimized);
-      setFormState(createBlankFormState());
-      setPhotoUrl(null);
-      setUploadError(null);
-      setStep('preview');
+
+      if (isParcelCapture) {
+        setParcelPhoto(optimized);
+        setFormState(createBlankFormState());
+        setParcelPhotoUrl(null);
+        setParcelUploadError(null);
+        setParcelUploadProgress(0);
+        setStep('parcelPreview');
+      } else {
+        setPersonPhoto(optimized);
+        setPersonPhotoUrl(null);
+        setPersonUploadError(null);
+        setPersonUploadProgress(0);
+        setStep('personPreview');
+      }
     } catch (error) {
       const parsed = parseApiError(error, 'Unable to capture photo.');
       showErrorToast(parsed);
@@ -388,18 +428,18 @@ export const CaptureScreen: React.FC = () => {
       setIsCapturing(false);
       setIsProcessingPhoto(false);
     }
-  }, [permission?.granted, requestPermission, isCapturing, optimizePhoto]);
+  }, [permission?.granted, requestPermission, isCapturing, optimizePhoto, step]);
 
-  const handleUsePhoto = useCallback(async () => {
-    console.log('[CaptureScreen] handleUsePhoto invoked');
+  const handleUseParcelPhoto = useCallback(async () => {
+    console.log('[CaptureScreen] handleUseParcelPhoto invoked');
 
-    if (!photo) {
-      console.warn('[CaptureScreen] handleUsePhoto called without an available photo.');
+    if (!parcelPhoto) {
+      console.warn('[CaptureScreen] handleUseParcelPhoto called without an available photo.');
       return;
     }
 
-    if (isUploading) {
-      console.log('[CaptureScreen] handleUsePhoto aborted because an upload is already in progress.');
+    if (isParcelUploading) {
+      console.log('[CaptureScreen] handleUseParcelPhoto aborted because an upload is already in progress.');
       return;
     }
 
@@ -409,20 +449,20 @@ export const CaptureScreen: React.FC = () => {
       return;
     }
 
-    console.log('[CaptureScreen] Starting upload for photo', {
-      uri: photo.uri,
-      width: photo.width,
-      height: photo.height,
-      size: photo.size,
+    console.log('[CaptureScreen] Starting upload for parcel photo', {
+      uri: parcelPhoto.uri,
+      width: parcelPhoto.width,
+      height: parcelPhoto.height,
+      size: parcelPhoto.size,
     });
 
-    setIsUploading(true);
-    setUploadError(null);
-    setUploadProgress(0);
+    setIsParcelUploading(true);
+    setParcelUploadError(null);
+    setParcelUploadProgress(0);
 
     try {
       console.log('[CaptureScreen] Requesting SAS for parcel upload.');
-      const sas = await requestParcelUpload();
+      const sas = await requestParcelUpload({ propertyId, category: 'parcel' });
       console.log('[CaptureScreen] Received SAS response', {
         hasUploadUrl: Boolean(sas.uploadUrl),
         hasBlobUrl: Boolean(sas.blobUrl),
@@ -431,7 +471,7 @@ export const CaptureScreen: React.FC = () => {
       let lastLoggedProgressBucket = -1;
       const uploadTask = createUploadTask(
         sas.uploadUrl,
-        photo.uri,
+        parcelPhoto.uri,
         {
           httpMethod: 'PUT',
           headers: {
@@ -442,7 +482,7 @@ export const CaptureScreen: React.FC = () => {
         ({ totalBytesSent, totalBytesExpectedToSend }) => {
           if (totalBytesExpectedToSend > 0) {
             const progress = totalBytesSent / totalBytesExpectedToSend;
-            setUploadProgress(progress);
+            setParcelUploadProgress(progress);
 
             const progressBucket = Math.round(progress * 10);
             if (progressBucket !== lastLoggedProgressBucket) {
@@ -461,27 +501,31 @@ export const CaptureScreen: React.FC = () => {
       await uploadTask.uploadAsync();
       console.log('[CaptureScreen] Upload task completed successfully.');
 
-      setPhotoUrl(sas.blobUrl);
-      setUploadProgress(1);
+      setParcelPhotoUrl(sas.blobUrl);
+      setParcelUploadProgress(1);
 
       let suggestions: Partial<ParcelFormState> = {};
-      try {
-        console.log('[CaptureScreen] Requesting OCR suggestions for uploaded photo.', sas.readUrl);
-        const response = await fetchParcelOcrSuggestions(sas.readUrl);
-        console.log('[CaptureScreen] Received OCR suggestions', response);
+      if (sas.readUrl) {
+        try {
+          console.log('[CaptureScreen] Requesting OCR suggestions for uploaded photo.', sas.readUrl);
+          const response = await fetchParcelOcrSuggestions(sas.readUrl);
+          console.log('[CaptureScreen] Received OCR suggestions', response);
 
-        suggestions = {
-          trackingNumber: response.trackingNumber ?? '',
-          recipientName: response.customerName ?? '',
-          mobileNumber: response.mobileNumber ?? '',
-          ocrText: response.ocrText ?? '',
-          remarks: response.unit ?? '',
-          logisticSource: response.logisticSource?.trim() ?? '',
-        };
-      } catch (error) {
-        console.error('[CaptureScreen] Failed to fetch OCR suggestions', error);
-        const parsed = parseApiError(error, 'Unable to auto-fill from the photo.');
-        showToast(parsed.message, { type: 'info' });
+          suggestions = {
+            trackingNumber: response.trackingNumber ?? '',
+            recipientName: response.customerName ?? '',
+            mobileNumber: response.mobileNumber ?? '',
+            ocrText: response.ocrText ?? '',
+            remarks: response.unit ?? '',
+            logisticSource: response.logisticSource?.trim() ?? '',
+          };
+        } catch (error) {
+          console.error('[CaptureScreen] Failed to fetch OCR suggestions', error);
+          const parsed = parseApiError(error, 'Unable to auto-fill from the photo.');
+          showToast(parsed.message, { type: 'info' });
+        }
+      } else {
+        console.log('[CaptureScreen] Skipping OCR suggestions because readUrl was not provided.');
       }
 
       setFormState(prev => ({
@@ -493,16 +537,101 @@ export const CaptureScreen: React.FC = () => {
       setStep('details');
       setFormErrors({});
       fieldLayoutsRef.current = {};
-      console.log('[CaptureScreen] handleUsePhoto completed successfully.');
+      console.log('[CaptureScreen] handleUseParcelPhoto completed successfully.');
     } catch (error) {
       console.error('[CaptureScreen] Upload failed', error);
       const parsed = parseApiError(error, 'Unable to upload photo.');
-      setUploadError(parsed);
+      setParcelUploadError(parsed);
     } finally {
-      setIsUploading(false);
-      console.log('[CaptureScreen] handleUsePhoto finished');
+      setIsParcelUploading(false);
+      console.log('[CaptureScreen] handleUseParcelPhoto finished');
     }
-  }, [isUploading, photo, propertyId]);
+  }, [isParcelUploading, parcelPhoto, propertyId]);
+
+  const handleUsePersonPhoto = useCallback(async () => {
+    console.log('[CaptureScreen] handleUsePersonPhoto invoked');
+
+    if (!personPhoto) {
+      console.warn('[CaptureScreen] handleUsePersonPhoto called without an available photo.');
+      return;
+    }
+
+    if (isPersonUploading) {
+      console.log('[CaptureScreen] handleUsePersonPhoto aborted because an upload is already in progress.');
+      return;
+    }
+
+    if (!propertyId) {
+      console.warn('[CaptureScreen] Unable to determine property while uploading collector photo.');
+      showToast('Unable to determine your assigned property.', { type: 'error' });
+      return;
+    }
+
+    console.log('[CaptureScreen] Starting upload for collector photo', {
+      uri: personPhoto.uri,
+      width: personPhoto.width,
+      height: personPhoto.height,
+      size: personPhoto.size,
+    });
+
+    setIsPersonUploading(true);
+    setPersonUploadError(null);
+    setPersonUploadProgress(0);
+
+    try {
+      console.log('[CaptureScreen] Requesting SAS for collector upload.');
+      const sas = await requestParcelUpload({ propertyId, category: 'person' });
+      console.log('[CaptureScreen] Received collector SAS response', {
+        hasUploadUrl: Boolean(sas.uploadUrl),
+        hasBlobUrl: Boolean(sas.blobUrl),
+      });
+
+      let lastLoggedProgressBucket = -1;
+      const uploadTask = createUploadTask(
+        sas.uploadUrl,
+        personPhoto.uri,
+        {
+          httpMethod: 'PUT',
+          headers: {
+            'Content-Type': 'image/jpeg',
+            'x-ms-blob-type': 'BlockBlob',
+          },
+        },
+        ({ totalBytesSent, totalBytesExpectedToSend }) => {
+          if (totalBytesExpectedToSend > 0) {
+            const progress = totalBytesSent / totalBytesExpectedToSend;
+            setPersonUploadProgress(progress);
+
+            const progressBucket = Math.round(progress * 10);
+            if (progressBucket !== lastLoggedProgressBucket) {
+              console.log('[CaptureScreen] Collector upload progress', {
+                sent: totalBytesSent,
+                expected: totalBytesExpectedToSend,
+                progress,
+              });
+              lastLoggedProgressBucket = progressBucket;
+            }
+          }
+        },
+      );
+
+      console.log('[CaptureScreen] Beginning collector upload task.');
+      await uploadTask.uploadAsync();
+      console.log('[CaptureScreen] Collector upload completed successfully.');
+
+      setPersonPhotoUrl(sas.blobUrl);
+      setPersonUploadProgress(1);
+      setStep('details');
+      console.log('[CaptureScreen] handleUsePersonPhoto completed successfully.');
+    } catch (error) {
+      console.error('[CaptureScreen] Collector upload failed', error);
+      const parsed = parseApiError(error, 'Unable to upload collector photo.');
+      setPersonUploadError(parsed);
+    } finally {
+      setIsPersonUploading(false);
+      console.log('[CaptureScreen] handleUsePersonPhoto finished');
+    }
+  }, [isPersonUploading, personPhoto, propertyId]);
 
   const handleSaveParcel = useCallback(async () => {
     if (!propertyId) {
@@ -510,8 +639,13 @@ export const CaptureScreen: React.FC = () => {
       return;
     }
 
-    if (entryMode === 'photo' && !photoUrl) {
+    if (entryMode === 'photo' && !parcelPhotoUrl) {
       showToast('Missing parcel photo. Please try again.', { type: 'error' });
+      return;
+    }
+
+    if (!personPhotoUrl) {
+      showToast('Capture the collector photo before saving.', { type: 'error' });
       return;
     }
 
@@ -555,9 +689,11 @@ export const CaptureScreen: React.FC = () => {
         collectedAt: collectedAtIso,
       };
 
-      if (photoUrl) {
-        payload.photoUrl = photoUrl;
+      if (parcelPhotoUrl) {
+        payload.photoUrl = parcelPhotoUrl;
       }
+
+      payload.personPhotoUrl = personPhotoUrl;
 
       const created = await createParcel(payload);
       setLastCreatedParcel(created);
@@ -571,14 +707,22 @@ export const CaptureScreen: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [entryMode, focusField, formState, photoUrl, propertyId, scrollToField]);
+  }, [entryMode, focusField, formState, parcelPhotoUrl, personPhotoUrl, propertyId, scrollToField]);
 
   const handleViewToday = useCallback(() => {
     navigation.navigate('Today');
   }, [navigation]);
 
-  const canRetryUpload = Boolean(uploadError) && !isUploading;
-  const usePhotoButtonState = useMemo(() => getUsePhotoButtonState({ isUploading }), [isUploading]);
+  const canRetryParcelUpload = Boolean(parcelUploadError) && !isParcelUploading;
+  const canRetryPersonUpload = Boolean(personUploadError) && !isPersonUploading;
+  const useParcelPhotoButtonState = useMemo(
+    () => getUsePhotoButtonState({ isUploading: isParcelUploading }),
+    [isParcelUploading],
+  );
+  const usePersonPhotoButtonState = useMemo(
+    () => getUsePhotoButtonState({ isUploading: isPersonUploading }),
+    [isPersonUploading],
+  );
 
   const permissionStatusView = useMemo(() => {
     if (!permission) {
@@ -606,8 +750,8 @@ export const CaptureScreen: React.FC = () => {
     return (
       <View style={styles.centered}>
         <Text style={[styles.permissionTitle, { color: theme.roles.text.primary }]}>Camera access needed</Text>
-        <Text style={[styles.permissionText, { color: theme.roles.text.secondary }]}>
-          Allow Lobbybox Guard to use the camera so you can capture parcel photos.
+        <Text style={[styles.permissionText, { color: theme.roles.text.secondary }]}> 
+          Allow Lobbybox Guard to use the camera so you can capture parcel and collector photos.
         </Text>
         <Button title={actionLabel} onPress={actionHandler} style={styles.permissionButton} />
       </View>
@@ -620,71 +764,90 @@ export const CaptureScreen: React.FC = () => {
   );
 
   const topContentPadding = Math.max(8 - insets.top, 0);
-  const renderCameraStep = () => (
-    <View style={[styles.cameraWrapper, { paddingTop: insets.top }]}>
-      <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
-        <View style={styles.cameraOverlay}>
-          <Text style={[styles.cameraHint, { color: theme.roles.text.onPrimary }]}>Align the label and tap the shutter</Text>
-        </View>
-        {(isCapturing || isProcessingPhoto) && (
-          <View style={styles.scannerOverlay} pointerEvents="none">
-            <Animated.View
-              style={[
-                styles.scannerBar,
-                {
-                  transform: [
-                    {
-                      translateY: scanningProgress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-160, 160],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            />
+  const renderCameraStep = () => {
+    const isPersonCamera = step === 'personCamera';
+    const cameraHint = isPersonCamera
+      ? 'Center the collector and tap the shutter'
+      : 'Align the label and tap the shutter';
+    const shutterLabel = isPersonCamera ? 'Capture collector photo' : 'Capture parcel photo';
+    const showScanner = !isPersonCamera && (isCapturing || isProcessingPhoto);
+
+    return (
+      <View style={[styles.cameraWrapper, { paddingTop: insets.top }]}>
+        <View style={styles.cameraContainer}>
+          <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+          <View style={styles.cameraOverlay}>
+            <Text style={[styles.cameraHint, { color: theme.roles.text.onPrimary }]}>{cameraHint}</Text>
           </View>
-        )}
-      </View>
-      <View style={[styles.cameraControls, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-        <TouchableOpacity
-          onPress={handleCapture}
-          style={[
-            styles.shutterButton,
-            {
-              backgroundColor: theme.roles.text.onPrimary,
-              shadowColor: '#000',
-            },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Capture parcel photo"
-          disabled={isCapturing || isProcessingPhoto}>
-          {isCapturing || isProcessingPhoto ? (
-            <ActivityIndicator color={shutterIconColor} />
+          {showScanner && (
+            <View style={styles.scannerOverlay} pointerEvents="none">
+              <Animated.View
+                style={[
+                  styles.scannerBar,
+                  {
+                    transform: [
+                      {
+                        translateY: scanningProgress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-160, 160],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            </View>
+          )}
+        </View>
+        <View style={[styles.cameraControls, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+          <TouchableOpacity
+            onPress={handleCapture}
+            style={[
+              styles.shutterButton,
+              {
+                backgroundColor: theme.roles.text.onPrimary,
+                shadowColor: '#000',
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={shutterLabel}
+            disabled={isCapturing || isProcessingPhoto}>
+            {isCapturing || isProcessingPhoto ? (
+              <ActivityIndicator color={shutterIconColor} />
+            ) : (
+              <MaterialCommunityIcons
+                name="camera-iris"
+                size={38}
+                color={shutterIconColor}
+                style={styles.shutterIcon}
+              />
+            )}
+          </TouchableOpacity>
+          {isPersonCamera ? (
+            <Button
+              title="Back to details"
+              onPress={() => setStep('details')}
+              variant="secondary"
+              style={styles.manualButton}
+              disabled={isCapturing || isProcessingPhoto}
+            />
           ) : (
-            <MaterialCommunityIcons
-              name="camera-iris"
-              size={38}
-              color={shutterIconColor}
-              style={styles.shutterIcon}
+            <Button
+              title="Add manually"
+              onPress={beginManualEntry}
+              variant="secondary"
+              style={styles.manualButton}
+              accessibilityLabel="Add a parcel manually without taking a photo"
+              disabled={isCapturing || isProcessingPhoto}
             />
           )}
-        </TouchableOpacity>
-        <Button
-          title="Add manually"
-          onPress={beginManualEntry}
-          variant="secondary"
-          style={styles.manualButton}
-          accessibilityLabel="Add a parcel manually without taking a photo"
-          disabled={isCapturing || isProcessingPhoto}
-        />
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
-  const renderPreviewStep = () => {
-    if (!photo) {
+  const renderParcelPreviewStep = () => {
+    if (!parcelPhoto) {
       return null;
     }
 
@@ -704,21 +867,21 @@ export const CaptureScreen: React.FC = () => {
           contentInsetAdjustmentBehavior="never"
           keyboardShouldPersistTaps="handled">
           <Image
-            source={{ uri: photo.uri }}
-            style={[styles.previewImage, { aspectRatio: photo.width / photo.height }]}
+            source={{ uri: parcelPhoto.uri }}
+            style={[styles.previewImage, { aspectRatio: parcelPhoto.width / parcelPhoto.height }]}
             resizeMode="contain"
           />
           <View style={styles.previewInfoRow}>
             <Text style={[styles.previewInfoText, { color: theme.roles.text.secondary }]}>Resolution</Text>
             <Text style={[styles.previewInfoValue, { color: theme.roles.text.primary }]}>
-              {photo.width} × {photo.height}
+              {parcelPhoto.width} × {parcelPhoto.height}
             </Text>
           </View>
-          {photo.size ? (
+          {parcelPhoto.size ? (
             <View style={styles.previewInfoRow}>
               <Text style={[styles.previewInfoText, { color: theme.roles.text.secondary }]}>File size</Text>
               <Text style={[styles.previewInfoValue, { color: theme.roles.text.primary }]}>
-                {(photo.size / 1024).toFixed(0)} KB
+                {(parcelPhoto.size / 1024).toFixed(0)} KB
               </Text>
             </View>
           ) : null}
@@ -737,35 +900,109 @@ export const CaptureScreen: React.FC = () => {
               numberOfLines={3}
             />
           </View>
-          {uploadError ? (
-            <Text style={[styles.uploadErrorText, { color: theme.roles.status.error }]}>{uploadError.message}</Text>
+          {parcelUploadError ? (
+            <Text style={[styles.uploadErrorText, { color: theme.roles.status.error }]}>{parcelUploadError.message}</Text>
           ) : null}
-          {isUploading ? (
+          {isParcelUploading ? (
             <View style={styles.uploadProgressWrapper}>
               <Text style={[styles.uploadLabel, { color: theme.roles.text.secondary }]}>Uploading photo…</Text>
-              <ProgressBar progress={uploadProgress} />
+              <ProgressBar progress={parcelUploadProgress} />
               <Text style={[styles.uploadPercent, { color: theme.roles.text.secondary }]}>
-                {Math.round(uploadProgress * 100)}%
+                {Math.round(parcelUploadProgress * 100)}%
               </Text>
             </View>
           ) : null}
         </ScrollView>
         <View style={[styles.previewActions, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <Button title="Retake" onPress={resetFlow} variant="secondary" disabled={isUploading} />
+          <Button title="Retake" onPress={resetFlow} variant="secondary" disabled={isParcelUploading} />
           <View style={styles.previewSpacing} />
           <Button
             title="Use photo"
-            onPress={handleUsePhoto}
-            disabled={usePhotoButtonState.disabled}
-            loading={usePhotoButtonState.showLoader}
+            onPress={handleUseParcelPhoto}
+            disabled={useParcelPhotoButtonState.disabled}
+            loading={useParcelPhotoButtonState.showLoader}
             loadingText="Processing…"
             loadingLabel="Processing photo…"
             accessibilityLabel="Use this photo and continue"
           />
         </View>
-        {canRetryUpload ? (
+        {canRetryParcelUpload ? (
           <View style={styles.retryNotice}>
-            <Button title="Try upload again" onPress={handleUsePhoto} />
+            <Button title="Try upload again" onPress={handleUseParcelPhoto} />
+          </View>
+        ) : null}
+      </KeyboardAvoidingView>
+    );
+  };
+
+  const renderPersonPreviewStep = () => {
+    if (!personPhoto) {
+      return null;
+    }
+
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.select({ ios: 'padding', android: undefined })}
+        style={styles.flex}
+        keyboardVerticalOffset={Platform.select({ ios: insets.top, android: 0 })}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.previewContent,
+            {
+              paddingTop: topContentPadding,
+              paddingBottom: 24 + Math.max(insets.bottom - 8, 0),
+            },
+          ]}
+          contentInsetAdjustmentBehavior="never"
+          keyboardShouldPersistTaps="handled">
+          <Text style={[styles.previewContextLabel, { color: theme.roles.text.secondary }]}>Collector photo</Text>
+          <Image
+            source={{ uri: personPhoto.uri }}
+            style={[styles.previewImage, { aspectRatio: personPhoto.width / personPhoto.height }]}
+            resizeMode="contain"
+          />
+          {personPhoto.size ? (
+            <View style={styles.previewInfoRow}>
+              <Text style={[styles.previewInfoText, { color: theme.roles.text.secondary }]}>File size</Text>
+              <Text style={[styles.previewInfoValue, { color: theme.roles.text.primary }]}>
+                {(personPhoto.size / 1024).toFixed(0)} KB
+              </Text>
+            </View>
+          ) : null}
+          {personUploadError ? (
+            <Text style={[styles.uploadErrorText, { color: theme.roles.status.error }]}>{personUploadError.message}</Text>
+          ) : null}
+          {isPersonUploading ? (
+            <View style={styles.uploadProgressWrapper}>
+              <Text style={[styles.uploadLabel, { color: theme.roles.text.secondary }]}>Uploading collector photo…</Text>
+              <ProgressBar progress={personUploadProgress} />
+              <Text style={[styles.uploadPercent, { color: theme.roles.text.secondary }]}>
+                {Math.round(personUploadProgress * 100)}%
+              </Text>
+            </View>
+          ) : null}
+        </ScrollView>
+        <View style={[styles.previewActions, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <Button
+            title="Retake"
+            onPress={() => setStep('personCamera')}
+            variant="secondary"
+            disabled={isPersonUploading}
+          />
+          <View style={styles.previewSpacing} />
+          <Button
+            title="Use photo"
+            onPress={handleUsePersonPhoto}
+            disabled={usePersonPhotoButtonState.disabled}
+            loading={usePersonPhotoButtonState.showLoader}
+            loadingText="Uploading…"
+            loadingLabel="Uploading collector photo…"
+            accessibilityLabel="Use this collector photo and continue"
+          />
+        </View>
+        {canRetryPersonUpload ? (
+          <View style={styles.retryNotice}>
+            <Button title="Try upload again" onPress={handleUsePersonPhoto} />
           </View>
         ) : null}
       </KeyboardAvoidingView>
@@ -796,6 +1033,39 @@ export const CaptureScreen: React.FC = () => {
             ? 'Fill in the parcel information to log it without a photo.'
             : 'Review the OCR suggestions and update as needed.'}
         </Text>
+        <View style={styles.sectionSpacing} />
+        <View
+          style={[
+            styles.collectorSection,
+            {
+              borderColor: theme.roles.card.border,
+              backgroundColor: theme.roles.card.background,
+            },
+          ]}>
+          <Text style={[styles.collectorTitle, { color: theme.roles.text.primary }]}>Collector photo</Text>
+          <Text style={[styles.collectorSubtitle, { color: theme.roles.text.secondary }]}>Required before saving the parcel.</Text>
+          <View style={styles.collectorPreviewWrapper}>
+            {personPhoto || personPhotoUrl ? (
+              <Image
+                source={{ uri: personPhoto?.uri ?? personPhotoUrl ?? undefined }}
+                style={styles.collectorImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.collectorPlaceholder, { borderColor: theme.roles.card.border }]}>
+                <MaterialCommunityIcons name="account" size={36} color={theme.roles.text.secondary} />
+                <Text style={[styles.collectorPlaceholderText, { color: theme.roles.text.secondary }]}>No collector photo yet</Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.collectorHint, { color: theme.roles.text.secondary }]}>Capture the person collecting the parcel for verification.</Text>
+          <Button
+            title={personPhotoUrl ? 'Retake collector photo' : 'Capture collector photo'}
+            onPress={() => setStep('personCamera')}
+            style={styles.collectorButton}
+            disabled={isSaving}
+          />
+        </View>
         <View style={styles.sectionSpacing} />
         <View style={styles.formFieldsWrapper}>
           <View style={styles.inputGroup} onLayout={handleFieldLayout('trackingNumber')}>
@@ -895,7 +1165,7 @@ export const CaptureScreen: React.FC = () => {
       <View style={[styles.detailsActions, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <Button
           title={entryMode === 'manual' ? 'Back to camera' : 'Back'}
-          onPress={entryMode === 'manual' ? returnToCamera : () => setStep('preview')}
+          onPress={entryMode === 'manual' ? returnToCamera : () => setStep('parcelPreview')}
           variant="secondary"
           disabled={isSaving}
         />
@@ -923,10 +1193,10 @@ export const CaptureScreen: React.FC = () => {
       contentInsetAdjustmentBehavior="never">
       <Text style={[styles.successTitle, { color: theme.roles.text.primary }]}>Parcel recorded</Text>
       <Text style={[styles.successSubtitle, { color: theme.roles.text.secondary }]}>You can capture another or review today's log.</Text>
-      {photo ? (
+      {parcelPhoto ? (
         <Image
-          source={{ uri: photo.uri }}
-          style={[styles.successImage, { aspectRatio: photo.width / photo.height }]}
+          source={{ uri: parcelPhoto.uri }}
+          style={[styles.successImage, { aspectRatio: parcelPhoto.width / parcelPhoto.height }]}
           resizeMode="contain"
         />
       ) : null}
@@ -959,11 +1229,15 @@ export const CaptureScreen: React.FC = () => {
     content = permissionStatusView;
   } else {
     switch (step) {
-      case 'camera':
+      case 'parcelCamera':
+      case 'personCamera':
         content = renderCameraStep();
         break;
-      case 'preview':
-        content = renderPreviewStep();
+      case 'parcelPreview':
+        content = renderParcelPreviewStep();
+        break;
+      case 'personPreview':
+        content = renderPersonPreviewStep();
         break;
       case 'details':
         content = renderDetailsStep();
@@ -976,8 +1250,11 @@ export const CaptureScreen: React.FC = () => {
     }
   }
 
+  const cameraEdges: Edge[] | undefined =
+    step === 'parcelCamera' || step === 'personCamera' ? ['left', 'right'] : undefined;
+
   return (
-    <ScreenContainer style={styles.screen} edges={step === 'camera' ? ['left', 'right'] : undefined}>
+    <ScreenContainer style={styles.screen} edges={cameraEdges}>
       {content}
     </ScreenContainer>
   );
@@ -1088,6 +1365,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  previewContextLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+  },
   sectionSpacing: {
     height: 8,
   },
@@ -1152,6 +1435,48 @@ const styles = StyleSheet.create({
   retryNotice: {
     paddingHorizontal: 24,
     marginBottom: 16,
+  },
+  collectorSection: {
+    padding: 20,
+    borderWidth: 1,
+    borderRadius: 16,
+  },
+  collectorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  collectorSubtitle: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  collectorPreviewWrapper: {
+    marginTop: 16,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  collectorImage: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+  },
+  collectorPlaceholder: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    paddingVertical: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  collectorPlaceholderText: {
+    marginTop: 12,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  collectorHint: {
+    marginTop: 12,
+    fontSize: 13,
+  },
+  collectorButton: {
+    marginTop: 16,
   },
   detailsContent: {
     flexGrow: 1,

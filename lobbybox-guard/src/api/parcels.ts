@@ -7,6 +7,7 @@ import {
   ParcelOcrSuggestion,
   ParcelReadRequest,
   ParcelReadResponse,
+  ParcelUploadCategory,
   ParcelUploadRequest,
   ParcelUploadResponse,
 } from './types';
@@ -128,8 +129,23 @@ export const fetchParcelHistory = async ({
   }
 };
 
-export const requestParcelUpload = async (): Promise<ParcelUploadResponse> => {
-  const payload: ParcelUploadRequest = {ext: 'jpg'};
+type ParcelUploadOptions = {
+  propertyId: string;
+  category?: ParcelUploadCategory;
+  ext?: 'jpg' | 'png';
+};
+
+export const requestParcelUpload = async ({
+  propertyId,
+  category = 'parcel',
+  ext = 'jpg',
+}: ParcelUploadOptions): Promise<ParcelUploadResponse> => {
+  const payload: ParcelUploadRequest = {
+    propertyId,
+    category,
+    ext,
+  };
+
   const {data} = await api.post<ParcelUploadResponse>('/parcels/sas', payload);
   return data;
 };
