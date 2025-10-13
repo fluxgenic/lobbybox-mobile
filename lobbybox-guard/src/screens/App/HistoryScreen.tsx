@@ -658,6 +658,7 @@ export const HistoryScreen: React.FC = () => {
         ListEmptyComponent={listEmpty}
         onEndReachedThreshold={0.2}
         onEndReached={handleLoadMore}
+        showsVerticalScrollIndicator={false}
       />
       <Modal visible={photoPreview.visible} transparent animationType="fade" onRequestClose={closePhotoPreview}>
         <View style={styles.modalBackdrop}>
@@ -669,7 +670,8 @@ export const HistoryScreen: React.FC = () => {
             <ScrollView
               style={styles.modalScroll}
               contentContainerStyle={styles.modalScrollContent}
-              alwaysBounceVertical={false}>
+              alwaysBounceVertical={false}
+              showsVerticalScrollIndicator={false}>
               <Text style={[styles.modalTitle, {color: theme.roles.text.primary}]}>Parcel photo</Text>
               {photoPreview.recipient ? (
                 <Text style={[styles.modalMeta, {color: theme.roles.text.secondary}]}>Recipient: {photoPreview.recipient}</Text>

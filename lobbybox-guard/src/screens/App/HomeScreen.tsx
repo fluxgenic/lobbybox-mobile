@@ -499,7 +499,8 @@ export const HomeScreen: React.FC = () => {
               tintColor={theme.palette.primary.main}
               colors={[theme.palette.primary.main]}
             />
-          }>
+          }
+          showsVerticalScrollIndicator={false}>
           <View style={styles.content}>
             {isOffline ? <OfflineBanner /> : null}
             <View
@@ -591,7 +592,8 @@ export const HomeScreen: React.FC = () => {
             <ScrollView
               style={styles.modalScroll}
               contentContainerStyle={styles.modalScrollContent}
-              alwaysBounceVertical={false}>
+              alwaysBounceVertical={false}
+              showsVerticalScrollIndicator={false}>
               <Text style={[styles.modalTitle, {color: theme.roles.text.primary}]}>Parcel photo</Text>
               {photoPreview.recipient ? (
                 <Text style={[styles.modalMeta, {color: theme.roles.text.secondary}]}>Recipient: {photoPreview.recipient}</Text>

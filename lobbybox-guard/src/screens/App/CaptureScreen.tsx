@@ -865,7 +865,8 @@ export const CaptureScreen: React.FC = () => {
             },
           ]}
           contentInsetAdjustmentBehavior="never"
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
           <Image
             source={{ uri: parcelPhoto.uri }}
             style={[styles.previewImage, { aspectRatio: parcelPhoto.width / parcelPhoto.height }]}
@@ -954,7 +955,8 @@ export const CaptureScreen: React.FC = () => {
             },
           ]}
           contentInsetAdjustmentBehavior="never"
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
           <Text style={[styles.previewContextLabel, { color: theme.roles.text.secondary }]}>Collector photo</Text>
           <Image
             source={{ uri: personPhoto.uri }}
@@ -1024,7 +1026,8 @@ export const CaptureScreen: React.FC = () => {
           },
         ]}
         contentInsetAdjustmentBehavior="never"
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
         <Text style={[styles.detailsTitle, { color: theme.roles.text.primary }]}>
           {entryMode === 'manual' ? 'Enter parcel details' : 'Confirm parcel details'}
         </Text>
@@ -1190,7 +1193,8 @@ export const CaptureScreen: React.FC = () => {
           paddingBottom: 24 + Math.max(insets.bottom - 8, 0),
         },
       ]}
-      contentInsetAdjustmentBehavior="never">
+      contentInsetAdjustmentBehavior="never"
+      showsVerticalScrollIndicator={false}>
       <Text style={[styles.successTitle, { color: theme.roles.text.primary }]}>Parcel recorded</Text>
       <Text style={[styles.successSubtitle, { color: theme.roles.text.secondary }]}>You can capture another or review today's log.</Text>
       {parcelPhoto ? (
