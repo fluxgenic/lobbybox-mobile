@@ -32,6 +32,7 @@ type PhotoPreviewState = {
   recipient?: string;
   tracking?: string;
   collectedBy?: string | null;
+  personPhotoUrl?: string | null;
   error: ParsedApiError | null;
 };
 
@@ -43,6 +44,7 @@ const initialPreviewState: PhotoPreviewState = {
   recipient: undefined,
   tracking: undefined,
   collectedBy: undefined,
+  personPhotoUrl: undefined,
   error: null,
 };
 
@@ -254,6 +256,8 @@ export const HistoryScreen: React.FC = () => {
       const collectorName = formatCollectorName(
         parcel.collectedByUserDisplayName ?? parcel.collectedByUserName ?? undefined,
       );
+      const collectorPhotoUrl = parcel.personPhotoUrl?.trim();
+
       setPhotoPreview({
         visible: true,
         loading: true,
@@ -262,6 +266,7 @@ export const HistoryScreen: React.FC = () => {
         recipient: parcel.recipientName ? formatRecipientName(parcel.recipientName) : undefined,
         tracking: parcel.trackingNumber?.trim() || undefined,
         collectedBy: collectorName ?? undefined,
+        personPhotoUrl: collectorPhotoUrl || undefined,
         error: null,
       });
       loadPhotoPreview(trimmedPhotoUrl);
@@ -652,9 +657,35 @@ export const HistoryScreen: React.FC = () => {
               ) : (
                 <Text style={[styles.modalError, {color: theme.roles.status.error}]}>No image to display</Text>
               )}
-              {photoPreview.collectedBy ? (
-                <Text style={[styles.modalCollector, {color: theme.roles.text.secondary}]}>Collected by {photoPreview.collectedBy}</Text>
-              ) : null}
+              <View
+                style={[
+                  styles.collectorSection,
+                  {
+                    borderColor: theme.roles.card.border,
+                    backgroundColor:
+                      theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(16, 24, 40, 0.04)',
+                  },
+                ]}>
+                <Text style={[styles.collectorTitle, {color: theme.roles.text.primary}]}>Parcel collector</Text>
+                {photoPreview.personPhotoUrl ? (
+                  <Image source={{uri: photoPreview.personPhotoUrl}} style={styles.collectorImage} resizeMode="cover" />
+                ) : (
+                  <View
+                    style={[
+                      styles.collectorPlaceholder,
+                      {
+                        borderColor: theme.roles.card.border,
+                        backgroundColor:
+                          theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(16, 24, 40, 0.02)',
+                      },
+                    ]}>
+                    <Text style={[styles.collectorPlaceholderText, {color: theme.roles.text.secondary}]}>No collector photo available</Text>
+                  </View>
+                )}
+                {photoPreview.collectedBy ? (
+                  <Text style={[styles.collectorMeta, {color: theme.roles.text.secondary}]}>Collected by {photoPreview.collectedBy}</Text>
+                ) : null}
+              </View>
             </ScrollView>
             <View
               style={[
@@ -934,9 +965,39 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
-  modalCollector: {
+  collectorSection: {
+    marginTop: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderRadius: 16,
+  },
+  collectorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  collectorImage: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    borderRadius: 12,
+    marginTop: 12,
+    backgroundColor: 'black',
+  },
+  collectorPlaceholder: {
+    marginTop: 12,
+    paddingVertical: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  collectorPlaceholderText: {
     fontSize: 14,
-    marginTop: 20,
+    textAlign: 'center',
+  },
+  collectorMeta: {
+    fontSize: 14,
+    marginTop: 12,
   },
   modalError: {
     marginTop: 32,

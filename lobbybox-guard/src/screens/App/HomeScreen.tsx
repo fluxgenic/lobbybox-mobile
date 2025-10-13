@@ -69,6 +69,7 @@ type PhotoPreviewState = {
   recipient?: string | null;
   tracking?: string | null;
   collectedBy?: string | null;
+  personPhotoUrl?: string | null;
   error: ParsedApiError | null;
 };
 
@@ -80,6 +81,7 @@ const initialPhotoPreviewState: PhotoPreviewState = {
   recipient: undefined,
   tracking: undefined,
   collectedBy: undefined,
+  personPhotoUrl: undefined,
   error: null,
 };
 
@@ -251,6 +253,8 @@ export const HomeScreen: React.FC = () => {
       const collectorName = formatCollectorName(
         parcel.collectedByUserDisplayName ?? parcel.collectedByUserName ?? undefined,
       );
+      const collectorPhotoUrl = parcel.personPhotoUrl?.trim();
+
       setPhotoPreview({
         visible: true,
         loading: true,
@@ -259,6 +263,7 @@ export const HomeScreen: React.FC = () => {
         recipient: parcel.recipientName ? formatRecipientName(parcel.recipientName) : undefined,
         tracking: parcel.trackingNumber,
         collectedBy: collectorName ?? undefined,
+        personPhotoUrl: collectorPhotoUrl || undefined,
         error: null,
       });
       loadPhotoPreview(trimmedPhotoUrl);
@@ -574,11 +579,39 @@ export const HomeScreen: React.FC = () => {
               ) : (
                 <Text style={[styles.modalMeta, {color: theme.roles.status.error}]}>No image to display</Text>
               )}
-              {photoPreview.collectedBy ? (
-                <Text style={[styles.modalCollector, {color: theme.roles.text.secondary}]}>
-                  Collected by {photoPreview.collectedBy}
-                </Text>
-              ) : null}
+              <View
+                style={[
+                  styles.collectorSection,
+                  {
+                    borderColor: theme.roles.card.border,
+                    backgroundColor:
+                      theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(16, 24, 40, 0.04)',
+                  },
+                ]}>
+                <Text style={[styles.collectorTitle, {color: theme.roles.text.primary}]}>Parcel collector</Text>
+                {photoPreview.personPhotoUrl ? (
+                  <Image source={{uri: photoPreview.personPhotoUrl}} style={styles.collectorImage} resizeMode="cover" />
+                ) : (
+                  <View
+                    style={[
+                      styles.collectorPlaceholder,
+                      {
+                        borderColor: theme.roles.card.border,
+                        backgroundColor:
+                          theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(16, 24, 40, 0.02)',
+                      },
+                    ]}>
+                    <Text style={[styles.collectorPlaceholderText, {color: theme.roles.text.secondary}]}> 
+                      No collector photo available
+                    </Text>
+                  </View>
+                )}
+                {photoPreview.collectedBy ? (
+                  <Text style={[styles.collectorMeta, {color: theme.roles.text.secondary}]}> 
+                    Collected by {photoPreview.collectedBy}
+                  </Text>
+                ) : null}
+              </View>
             </ScrollView>
             <Button title="Close" onPress={closePhotoPreview} style={styles.modalButton} />
           </View>
@@ -856,11 +889,41 @@ const styles = StyleSheet.create({
     marginTop: 24,
     backgroundColor: 'black',
   },
-  modalCollector: {
-    fontSize: 14,
-    marginTop: 16,
-  },
   modalButton: {
     marginTop: 24,
+  },
+  collectorSection: {
+    marginTop: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderRadius: 16,
+  },
+  collectorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  collectorImage: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    borderRadius: 12,
+    marginTop: 12,
+    backgroundColor: 'black',
+  },
+  collectorPlaceholder: {
+    marginTop: 12,
+    paddingVertical: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  collectorPlaceholderText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  collectorMeta: {
+    fontSize: 14,
+    marginTop: 12,
   },
 });
