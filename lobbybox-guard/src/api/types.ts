@@ -29,6 +29,8 @@ export type ParcelListItem = {
   propertyId?: string | null;
   tenantId?: string | null;
   collectedByUserId?: string | null;
+  collectedByUserName?: string | null;
+  collectedByUserDisplayName?: string | null;
   photoUrl?: string | null;
   personPhotoUrl?: string | null;
   remarks?: string | null;
