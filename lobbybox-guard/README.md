@@ -56,3 +56,8 @@ Set `EAS_PROJECT_ID` in your shell or CI when triggering builds so that `app.con
 - ✅ Expire the access token → the client refreshes once and continues the session.
 - ✅ Invalidate the refresh token → the client signs the guard out cleanly.
 - ✅ Attempt login with a non-Guard role → `Not permitted` screen with Sign Out.
+
+
+eas login
+eas build:configure
+eas build -p android --profile preview
