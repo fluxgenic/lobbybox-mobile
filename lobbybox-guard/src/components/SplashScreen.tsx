@@ -1,5 +1,5 @@
 import React, {useEffect, useRef} from 'react';
-import {Animated, StyleSheet, Text, View} from 'react-native';
+import {Animated, Image, StyleSheet, Text, View} from 'react-native';
 
 export const SplashScreen: React.FC = () => {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -24,16 +24,11 @@ export const SplashScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.logoContainer, {opacity, transform: [{scale}]}]}>
-        <View style={styles.logoBadge}>
-          <View style={styles.logoBadgeInner}>
-            <View style={styles.logoFlap} />
-            <View style={styles.logoFlapReverse} />
-          </View>
-          <View style={styles.logoWheels}>
-            <View style={styles.wheel} />
-            <View style={styles.wheel} />
-          </View>
-        </View>
+        <Image
+          source={require('../../assets/app-icon.png')}
+          accessibilityLabel="LobbyBox app icon"
+          style={styles.logoImage}
+        />
         <Text style={styles.logoText}>LobbyBox</Text>
         <Text style={styles.subtitle}>Parcel Guard</Text>
       </Animated.View>
@@ -51,51 +46,9 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
   },
-  logoBadge: {
-    width: 120,
-    height: 120,
-    borderRadius: 32,
-    backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 20,
-  },
-  logoBadgeInner: {
-    width: 76,
-    height: 64,
-    borderRadius: 16,
-    borderWidth: 4,
-    borderColor: '#FFD522',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  logoFlap: {
-    position: 'absolute',
-    width: '110%',
-    height: 4,
-    backgroundColor: '#FFD522',
-    transform: [{rotate: '35deg'}],
-  },
-  logoFlapReverse: {
-    position: 'absolute',
-    width: '110%',
-    height: 4,
-    backgroundColor: '#FFD522',
-    transform: [{rotate: '-35deg'}],
-  },
-  logoWheels: {
-    position: 'absolute',
-    bottom: 20,
-    width: '52%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  wheel: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#FFD522',
+   logoImage: {
+    width: 160,
+    height: 160,
   },
   logoText: {
     fontSize: 32,
